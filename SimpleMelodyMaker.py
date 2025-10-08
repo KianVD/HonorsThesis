@@ -82,7 +82,7 @@ def produceCF(minlen,maxlen,noteLength,tonic,intervals):
             stepBackReq = 0
         else:
             #give interval based on scale degree
-            nextInterval = random.choice(MajorIntervalsFull[scaleDegree])
+            nextInterval = random.choice(MajorIntervalsFull[scaleDegree]) #TODO unhardcode
 
         currNote = currNote.transpose(nextInterval)
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
@@ -119,5 +119,8 @@ if __name__ == "__main__":
     main()
 
 
-#note; for making it mostly conjunct motion, I could weight the random choice so it is more likely to choose conjunct motion
+#footnote; for making it mostly conjunct motion, I could weight the random choice so it is more likely to choose conjunct motion
 #or I could cap the jumps to 1 or 2 times per cf, and once the cf is out of jumps it cant jump again
+#TODO now cantus firmus is only missing direction, mostly conjunct motion, minor keys, arpeggios, 
+
+#ask about last bullet point, clarify use Use the tonal scale
