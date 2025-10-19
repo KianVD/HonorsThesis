@@ -10,7 +10,7 @@ MajorIntervals = ["P1","M2","M3","P4","P5","M6","P8","-P8","-M2","-M3","-P4","-P
 # MajorIntervalsDown = ["-M2"] #["-P8","-M2","-M3","-P4","-P5","-M6"]
 #-M3 transposes down
 #make a dictionary that has each scale degree correspond to which movements they can take
-MajorIntervalsFull = {1 :["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],#take out p1 for one
+MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],#take out p1 for one
                       2:["M2","m3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
                       3:["m2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
                       4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"], #P4 and -P5 not possible
@@ -34,6 +34,8 @@ MajorIntervalsDown = {1 :["-m2"],#take out p1 for one
                       6:["-M2"],
                       7:["-M2"] #leading tone
                       }
+
+
 
 #shoudl there be a range specified?
 #dont forget to step back on jump
@@ -86,7 +88,7 @@ def produceCF(minlen,maxlen,noteLength,tonic,intervals):
 
         currNote = currNote.transpose(nextInterval)
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
-        if(nextInterval not in ["P1","M2","M3","m2","m3"]):
+        if(nextInterval not in ["P1","M2","M3","m2","m3","-M2"]):#TODO do down jumps too
             #then must step back down after
             if nextInterval[0] == "-":
                 stepBackReq = -1
@@ -122,5 +124,11 @@ if __name__ == "__main__":
 #footnote; for making it mostly conjunct motion, I could weight the random choice so it is more likely to choose conjunct motion
 #or I could cap the jumps to 1 or 2 times per cf, and once the cf is out of jumps it cant jump again
 #TODO now cantus firmus is only missing direction, mostly conjunct motion, minor keys, arpeggios, 
+#make it less likely to leap right after leap, then gradually increase likelihood
+#filter to probabilities (replace stepbackreq)
+#deal with all 0 prob
+#dynamically update pitch range, pull up limits
+#some percentage close to the end (maybe early stopping once past lower limit)
+#probability array
 
-#ask about last bullet point, clarify use Use the tonal scale
+
