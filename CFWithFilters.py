@@ -5,7 +5,7 @@ import random
 
 
 #global var
-EveryyPossibleInterval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
+EveryPossibleInterval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
 #using D5 for tritone cuz idk (also len 25)
 MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],#take out p1 for one
                       2:["M2","m3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
@@ -29,13 +29,13 @@ def LimitToMajorScale(prob,tonic,currNote):
     @return list of floats between 0 and 1, len 25"""
     #first figure out scale degree
     sc = scale.MajorScale(tonic)
-    scaleDegree = sc.getScaleDegreeFromPitch(currNote)
+    scaleDegree = sc.getScaleDegreeFromPitch(currNote) #what to do if scaleDegree is one? (Not in scale TODO)
 
     #use dictionary for scale
     AllowedIntervals = MajorIntervalsFull[scaleDegree]
 
-    for i in range(len(EveryyPossibleInterval)):
-        prob[i] *= 1 if EveryyPossibleInterval[i] in AllowedIntervals else 0
+    for i in range(len(EveryPossibleInterval)):
+        prob[i] *= .99 if EveryPossibleInterval[i] in AllowedIntervals else .01
 
     return prob
 
@@ -50,37 +50,68 @@ def LimitToRange(prob,tonic,currNote):
     tonicNote = note.Note(tonic,quarterLength=1)
 
     #find interval from tonic to current note
-    tonicToCurr = interval.Interval(tonic, currNote)
+    #tonicToCurr = interval.Interval(tonicNote, currNote)
 
     extremeNote = ""
-    if (tonicToCurr[0] == "-"):
+    isLower = True
+    if (currNote.pitch < tonicNote.pitch):
         #currNote is lower than tonic
         extremeNote = tonicNote.transpose("-P8")
+        isLower = True
     else:
         #currNote is higher than tonic
         extremeNote = tonicNote.transpose("P8")
+        isLower = False
     
 
     #find interval from currNote to most extreme note possible (this is what the next interval cant be higher than)
-    CurrToExt = interval.Interval(currNote,extremeNote)
+    currToExt = interval.Interval(currNote,extremeNote)
+    currToExtName = currToExt.name
+    if isLower:
+        currToExtName = "-"+currToExtName
+    #print(tonicNote.pitch,currNote.pitch,extremeNote.pitch, currToExtName)
 
-    #TODO use currtoEXt as a cutoff
-
-    #find max interval possible (from currNote to high or low)
+    #find index of currtoext in everypossibleinterval #TODO handle error (do interval equivalencies)
+    if currToExtName =="-P1":
+        currToExtName = "P1"
+    extremeIndex = EveryPossibleInterval.index(currToExtName)
 
     UnallowedIntervals = []
 
-    for i in range(len(EveryyPossibleInterval)):
-        #is the resulting note from this too far from tonic?
-        prob[i] *= 0 if EveryyPossibleInterval[i] in UnallowedIntervals else 1
+    if (isLower):
+        #if currnote is lower than tonic, remove all intervals below
+        #get subset of everypossibleinterval from start to extremeindex exclusive
+        UnallowedIntervals.extend(EveryPossibleInterval[:extremeIndex])
+    else:
+        #if currnote is higher than tonic, remove all intervals above
+        #get subset of everypossibleinterval from extremeindex exclusive to end
+        UnallowedIntervals.extend(EveryPossibleInterval[extremeIndex+1:])
 
+
+    for i in range(len(EveryPossibleInterval)):
+        #is the resulting note from this too far from tonic?
+        prob[i] *= .01 if EveryPossibleInterval[i] in UnallowedIntervals else .99
+
+    return prob
+
+def MakeStepwiseMoreLikely(prob):
+    """to make stepwise motion (intervals of 2) more likely
+    work out exactly what probabilities these should be
+    
+    @param prob current prob dist
+    
+    @return prob"""
+    FavoredIntervals = ["m2","M2","-m2","-M2"]
+
+    for i in range(len(EveryPossibleInterval)):
+        prob[i] *= .99 if EveryPossibleInterval[i] in FavoredIntervals else .5
     return prob
 
 def TryStepBack(prob,stepBackReq):
     """to be called on the next note in case a jump is necessary (2 intreval up or down depending on direction)
     should work regardless of scale specified outside of function
     
-    @param current prob dist we are working with
+    @param prob current prob dist we are working with
     @param stepBackReq indicates direction to jump (>0 means jump down)
     
     @return prob dist"""
@@ -91,8 +122,8 @@ def TryStepBack(prob,stepBackReq):
     else:
         return prob
 
-    for i in range(len(EveryyPossibleInterval)):
-        prob[i] *= 1 if EveryyPossibleInterval[i] in AllowedIntervals else 0
+    for i in range(len(EveryPossibleInterval)):
+        prob[i] *= .99 if EveryPossibleInterval[i] in AllowedIntervals else .01
 
     return prob
 
@@ -110,8 +141,8 @@ def SetStepBack(nextInterval):
             return 1
     else:
         return 0
-
     
+
 
 def produceCF(minlen,maxlen,noteLength,tonic,intervals):
     """This function should append the specified amount of notes to a stream 
@@ -146,17 +177,20 @@ def produceCF(minlen,maxlen,noteLength,tonic,intervals):
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
         prob = LimitToRange(prob,tonic,currNote)
 
+        prob = MakeStepwiseMoreLikely(prob)
+
         #call stepback function
         prob = TryStepBack(prob,stepBackReq)
 
         print(prob)
         #give interval based on scale degree
-        nextInterval = random.choices(EveryyPossibleInterval,weights=prob,k=1)[0]
+        nextInterval = random.choices(EveryPossibleInterval,weights=prob,k=1)[0] #TODO handle 0 available choices
+        print(nextInterval)
         currNote = currNote.transpose(nextInterval)
 
         stepBackReq = SetStepBack(nextInterval)
 
-        print(currNote)
+        print(currNote.pitch)
         s.append(currNote)
 
     #second to last note is 2 or 7
@@ -179,3 +213,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+#leading tone and stepbackreq are conflicting
+#so multiply by really low value instead of 0 and high instead of 1
