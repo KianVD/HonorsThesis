@@ -1,0 +1,26 @@
+
+------------------Notes from Oct 8--------------------------------------
+
+#footnote; for making it mostly conjunct motion, I could weight the random choice so it is more likely to choose conjunct motion
+#or I could cap the jumps to 1 or 2 times per cf, and once the cf is out of jumps it cant jump again
+#TODO now cantus firmus is only missing direction, mostly conjunct motion, minor keys, arpeggios, 
+#make it less likely to leap right after leap, then gradually increase likelihood
+#filter to probabilities (replace stepbackreq)
+#deal with all 0 prob
+#dynamically update pitch range, pull up limits
+#some percentage close to the end (maybe early stopping once past lower limit)
+#probability array
+------------------Notes from Oct 22--------------------------------------
+
+#only leap to leading tone down.
+#bigger leap means more conjunct motion to cancel it out
+
+#arpeggio
+#aesthetic creativity
+#formalizing formal rules
+#encoding rules
+#nature of creativity
+#inspiration
+#music theory is making musical creativity into rules
+#people can create without being genusis
+#is there a difference (what can a human do but not a computer)

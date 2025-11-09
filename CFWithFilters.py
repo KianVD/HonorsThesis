@@ -7,17 +7,23 @@ import random
 #global var
 EveryPossibleInterval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
 #using D5 for tritone cuz idk (also len 25)
-MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],#take out p1 for one
-                      2:["M2","m3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
-                      3:["m2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
-                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"], #P4 and -P5 not possible
+MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],
+                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
+                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"],
                       5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8"],
                       6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
                       7:["m2"] #leading tone
                       }
 
-
-#Here are the absolute rules (multiplying by 1 or 0) change this later
+MinorIntervalsFull = {1:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      2:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6","-P8"],
+                      3:["M2","M3","P4","P5","M6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"],
+                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8"],
+                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      7:["m2"] #leading tone
+                      }
 
 def LimitToMajorScale(prob,tonic,currNote):
     """sets all intervals to 0 except for those in the given scale, depending on scaledegree
@@ -35,7 +41,7 @@ def LimitToMajorScale(prob,tonic,currNote):
     AllowedIntervals = MajorIntervalsFull[scaleDegree]
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= .99 if EveryPossibleInterval[i] in AllowedIntervals else .01
+        prob[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
 
     return prob
 
@@ -90,7 +96,7 @@ def LimitToRange(prob,tonic,currNote):
 
     for i in range(len(EveryPossibleInterval)):
         #is the resulting note from this too far from tonic?
-        prob[i] *= .01 if EveryPossibleInterval[i] in UnallowedIntervals else .99
+        prob[i] *= 0 if EveryPossibleInterval[i] in UnallowedIntervals else 1
 
     return prob
 
@@ -104,7 +110,7 @@ def MakeStepwiseMoreLikely(prob):
     FavoredIntervals = ["m2","M2","-m2","-M2"]
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= .99 if EveryPossibleInterval[i] in FavoredIntervals else .5
+        prob[i] *= 1 if EveryPossibleInterval[i] in FavoredIntervals else .5
     return prob
 
 def TryStepBack(prob,stepBackReq):
@@ -116,14 +122,14 @@ def TryStepBack(prob,stepBackReq):
     
     @return prob dist"""
     if stepBackReq > 0:
-        AllowedIntervals = ["-m2","-M2"]
+        AllowedIntervals = ["-m2","-M2"]#make thirds not leaps3,3/4,3   /3,3,4
     elif stepBackReq < 0:
         AllowedIntervals = ["m2","M2"]
     else:
         return prob
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= .99 if EveryPossibleInterval[i] in AllowedIntervals else .01
+        prob[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
 
     return prob
 
@@ -144,7 +150,7 @@ def SetStepBack(nextInterval):
     
 
 
-def produceCF(minlen,maxlen,noteLength,tonic,intervals):
+def produceCF(minlen,maxlen,noteLength,tonic):
     """This function should append the specified amount of notes to a stream 
     in an order that follows the rules of the cantus firmus (see Cantus Firmus Principles)
     For now, all notes will be same length
@@ -199,7 +205,7 @@ def produceCF(minlen,maxlen,noteLength,tonic,intervals):
     if notechoice == 0:
         secondToLastNote = tonicNote.transpose("M2")
     else:
-        secondToLastNote = tonicNote.transpose("-m2") #TODO unhardcode? (for 7 in minor)
+        secondToLastNote = tonicNote.transpose("-m2") #TODO make melody cohesive
     s.append(secondToLastNote)
 
     #end on tonic
@@ -208,13 +214,15 @@ def produceCF(minlen,maxlen,noteLength,tonic,intervals):
     s.show() #s.write("midi",fp="onenote.midi") other possible export command
 
 def main():
-    produceCF(8,16,1,"C4",MajorIntervalsFull)
+    produceCF(8,16,1,"C4")
 
 
 if __name__ == "__main__":
     main()
 
 
-
-#leading tone and stepbackreq are conflicting
-#so multiply by really low value instead of 0 and high instead of 1
+#functions yet to code
+#1  avoid dissonant leaps (add back possibility in scale)
+#2  have only a few leaps
+#3  have a single climax 9not leading tone
+#4  in minor, follow path of melodic minor (major up minor down)
