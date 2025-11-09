@@ -25,7 +25,7 @@ MinorIntervalsFull = {1:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","
                       7:["m2"] #leading tone
                       }
 
-def LimitToMajorScale(prob,tonic,currNote):
+def LimitToMajorScale(weights,tonic,currNote):
     """sets all intervals to 0 except for those in the given scale, depending on scaledegree
     
     @param prob the probability distribution we are working with 
@@ -41,11 +41,11 @@ def LimitToMajorScale(prob,tonic,currNote):
     AllowedIntervals = MajorIntervalsFull[scaleDegree]
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
+        weights[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
 
-    return prob
+    return weights
 
-def LimitToRange(prob,tonic,currNote):
+def LimitToRange(weights,tonic,currNote):
     """make sure next intervals isnt too high or too low from start note
     For now ill just stop it from getting more than an octave from the otnic (TODO?)
     
@@ -96,11 +96,11 @@ def LimitToRange(prob,tonic,currNote):
 
     for i in range(len(EveryPossibleInterval)):
         #is the resulting note from this too far from tonic?
-        prob[i] *= 0 if EveryPossibleInterval[i] in UnallowedIntervals else 1
+        weights[i] *= 0 if EveryPossibleInterval[i] in UnallowedIntervals else 1
 
-    return prob
+    return weights
 
-def MakeStepwiseMoreLikely(prob):
+def MakeStepwiseMoreLikely(weights):
     """to make stepwise motion (intervals of 2) more likely
     work out exactly what probabilities these should be
     
@@ -110,10 +110,21 @@ def MakeStepwiseMoreLikely(prob):
     FavoredIntervals = ["m2","M2","-m2","-M2"]
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= 1 if EveryPossibleInterval[i] in FavoredIntervals else .5
-    return prob
+        weights[i] *= 1 if EveryPossibleInterval[i] in FavoredIntervals else .5
+    return weights
 
-def TryStepBack(prob,stepBackReq):
+def LimitLeaps(weights):
+    """This function will make leaps less likely, depending on long it has been since the last leap
+        the probability will gradually go up over time for leaps
+        This can also replace the 'make stepwise more likely function'"""
+
+def EnsureClimaxHappens(weights):
+    """This function will need to:
+        track the current highest note in cf,
+        make sure its not the tonic 
+        make sure its not repeated"""
+
+def TryStepBack(weights,stepBackReq):
     """to be called on the next note in case a jump is necessary (2 intreval up or down depending on direction)
     should work regardless of scale specified outside of function
     
@@ -126,12 +137,12 @@ def TryStepBack(prob,stepBackReq):
     elif stepBackReq < 0:
         AllowedIntervals = ["m2","M2"]
     else:
-        return prob
+        return weights
 
     for i in range(len(EveryPossibleInterval)):
-        prob[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
+        weights[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
 
-    return prob
+    return weights
 
 def SetStepBack(nextInterval):
     """returns the stepback req depending on given interval
@@ -176,21 +187,21 @@ def produceCF(minlen,maxlen,noteLength,tonic):
     s.append(currNote) #sharps are # and flats are -,quarterLength 4 is whole note
     for i in range(cfLength-3):
         #initialize probability distribution
-        prob=[1]*25
+        weights=[1]*25
         #limit intervals to intervals in scale
-        prob = LimitToMajorScale(prob,tonic,currNote)
+        weights = LimitToMajorScale(weights,tonic,currNote)
 
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
-        prob = LimitToRange(prob,tonic,currNote)
+        weights = LimitToRange(weights,tonic,currNote)
 
-        prob = MakeStepwiseMoreLikely(prob)
+        weights = MakeStepwiseMoreLikely(weights)
 
         #call stepback function
-        prob = TryStepBack(prob,stepBackReq)
+        weights = TryStepBack(weights,stepBackReq)
 
-        print(prob)
+        print(weights)
         #give interval based on scale degree
-        nextInterval = random.choices(EveryPossibleInterval,weights=prob,k=1)[0] #TODO handle 0 available choices
+        nextInterval = random.choices(EveryPossibleInterval,weights=weights,k=1)[0] #TODO handle 0 available choices
         print(nextInterval)
         currNote = currNote.transpose(nextInterval)
 
