@@ -113,11 +113,26 @@ def MakeStepwiseMoreLikely(weights):
         weights[i] *= 1 if EveryPossibleInterval[i] in FavoredIntervals else .5
     return weights
 
-def LimitLeaps(weights):
+def LimitLeaps(weights, history):
     """This function will make leaps less likely, depending on long it has been since the last leap
-        the probability will gradually go up over time for leaps
-        This can also replace the 'make stepwise more likely function'"""
-    pass #TODO
+    the probability will gradually go up over time for leaps
+    This can also replace the 'make stepwise more likely function'
+        
+    @param weights current weight dist
+    @param history int time since last jump or beginning, 0 means the last note interval was a jump"""
+    
+    #calculate factor based on history (maybe a good mark is 1 leap per 8 notes? (back to 1 after 8 notes))
+    factor = history/8 #TODO adjust this
+
+    #make leaps less likely
+    notleaps = ["P1","M2","M3","m2","m3","-M2","-m2","-M3","-m3"] #small interval ragne
+
+    for i in range(len(EveryPossibleInterval)):
+        #leave weight alone if it is not a leap, otherwise, multiply it by factor
+        weights[i] *= 1 if EveryPossibleInterval[i] in notleaps else factor
+    return weights
+
+    
 
 def EnsureClimaxHappens(weights):
     """This function will need to:
@@ -145,7 +160,7 @@ def TryStepBack(weights,stepBackReq):
     
     @return prob dist"""
     if stepBackReq > 0:
-        AllowedIntervals = ["-m2","-M2"]#make thirds not leaps3,3/4,3   /3,3,4
+        AllowedIntervals = ["-m2","-M2"]#make thirds not leaps3,3/4,3   /3,3,4 (arpeggio)
     elif stepBackReq < 0:
         AllowedIntervals = ["m2","M2"]
     else:
@@ -197,6 +212,8 @@ def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
     currNote= note.Note(tonic,quarterLength=noteLength)
     #start on tonic
     s.append(currNote) #sharps are # and flats are -,quarterLength 4 is whole note
+    #keep track of leaps
+    leapHistory = 0
     for i in range(cfLength-3):
         #initialize probability distribution
         weights=[1]*25
@@ -206,7 +223,7 @@ def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
         weights = LimitToRange(weights,tonic,currNote)
 
-        weights = MakeStepwiseMoreLikely(weights)
+        weights = LimitLeaps(weights,leapHistory)
 
         #call stepback function
         weights = TryStepBack(weights,stepBackReq)
@@ -220,6 +237,12 @@ def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
         currNote = currNote.transpose(nextInterval)
 
         stepBackReq = SetStepBack(nextInterval)
+        if stepBackReq != 0:
+            #if a leap happend, reset leaphistory
+            leapHistory = 0
+        else:
+            #else add 1
+            leapHistory += 1
         if verbose:
             print("Next Note: ",currNote.pitch,"\n")
         s.append(currNote)
@@ -254,3 +277,4 @@ if __name__ == "__main__":
 #functions yet to code
 #1  avoid dissonant leaps, but may be ok if step back(add back possibility in scale)
 #4  in minor, follow path of melodic minor (major up minor down)
+#5 allow arpeggios

@@ -16,8 +16,6 @@ def produceCPFS(cf, verbose =False):
         print(cf)
     for note in cf:
         #for each note
-        
-
         pass
 
 
