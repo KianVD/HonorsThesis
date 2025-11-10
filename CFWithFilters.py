@@ -117,12 +117,24 @@ def LimitLeaps(weights):
     """This function will make leaps less likely, depending on long it has been since the last leap
         the probability will gradually go up over time for leaps
         This can also replace the 'make stepwise more likely function'"""
+    pass #TODO
 
 def EnsureClimaxHappens(weights):
     """This function will need to:
         track the current highest note in cf,
         make sure its not the tonic 
         make sure its not repeated"""
+
+    #case 1: 
+    # starts on tonics and goes down, need to make upward leaps more likely
+
+    #case 2:
+    #highest note has been repeated, make any upward motion more likely
+
+    #case 3:
+    #nearing the end, make upward leaps less likely
+
+    pass #TODO
 
 def TryStepBack(weights,stepBackReq):
     """to be called on the next note in case a jump is necessary (2 intreval up or down depending on direction)
@@ -161,7 +173,7 @@ def SetStepBack(nextInterval):
     
 
 
-def produceCF(minlen,maxlen,noteLength,tonic):
+def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
     """This function should append the specified amount of notes to a stream 
     in an order that follows the rules of the cantus firmus (see Cantus Firmus Principles)
     For now, all notes will be same length
@@ -199,15 +211,17 @@ def produceCF(minlen,maxlen,noteLength,tonic):
         #call stepback function
         weights = TryStepBack(weights,stepBackReq)
 
-        print(weights)
+        if verbose:
+            print("Weights: ", weights)
         #give interval based on scale degree
         nextInterval = random.choices(EveryPossibleInterval,weights=weights,k=1)[0] #TODO handle 0 available choices
-        print(nextInterval)
+        if verbose:
+            print("Next Interval: ", nextInterval)
         currNote = currNote.transpose(nextInterval)
 
         stepBackReq = SetStepBack(nextInterval)
-
-        print(currNote.pitch)
+        if verbose:
+            print("Next Note: ",currNote.pitch,"\n")
         s.append(currNote)
 
     #second to last note is 2 or 7
@@ -221,19 +235,22 @@ def produceCF(minlen,maxlen,noteLength,tonic):
 
     #end on tonic
     s.append(note.Note(tonic,quarterLength=noteLength))
+    if verbose:
+        s.show() #s.write("midi",fp="onenote.midi") other possible export command
+        print("End of Cantus Firmus\n")
 
-    s.show() #s.write("midi",fp="onenote.midi") other possible export command
+    return list(s)
 
 def main():
-    produceCF(8,16,1,"C4")
+    produceCF(8,16,1,"C4",verbose=True)
 
 
 if __name__ == "__main__":
     main()
 
 
+
+
 #functions yet to code
-#1  avoid dissonant leaps (add back possibility in scale)
-#2  have only a few leaps
-#3  have a single climax 9not leading tone
+#1  avoid dissonant leaps, but may be ok if step back(add back possibility in scale)
 #4  in minor, follow path of melodic minor (major up minor down)
