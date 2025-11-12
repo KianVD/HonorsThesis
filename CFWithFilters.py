@@ -130,27 +130,41 @@ def LimitLeaps(weights, history):
     for i in range(len(EveryPossibleInterval)):
         #leave weight alone if it is not a leap, otherwise, multiply it by factor
         weights[i] *= 1 if EveryPossibleInterval[i] in notleaps else factor
-    return weights
+    return weights   
 
-    
-
-def EnsureClimaxHappens(weights):
+def EnsureClimaxHappens(weights,climaxCounter):
     """This function will need to:
-        track the current highest note in cf,
-        make sure its not the tonic 
-        make sure its not repeated"""
+    track the current highest note in cf,
+    make sure its not the tonic 
+    make sure its not repeated
+        
+    @param weights current weight dist
+    @param climaxCounter frequency that highest note has appeared, 0 if no note has been higher than tonic"""
+
+    UpwardsLeaps = ["P4","D5","P5","m6","M6","m7","M7","P8"]
+    UpwardsAll = ["P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]
 
     #case 1: 
-    # starts on tonics and goes down, need to make upward leaps more likely
+    # starts on tonics and goes down, need to make upward leaps more likely TODO dont do this too early
+    """if climaxCounter == 0:
+        for i in range(len(EveryPossibleInterval)):
+            weights[i] *= 1 if EveryPossibleInterval[i] in UpwardsLeaps else .5
+        return weights"""
 
     #case 2:
     #highest note has been repeated, make any upward motion more likely
+    if climaxCounter > 1:
+        for i in range(len(EveryPossibleInterval)):
+            weights[i] *= 1 if EveryPossibleInterval[i] in UpwardsAll else .5
+        return weights
 
     #case 3:
     #nearing the end, make upward leaps less likely
+    #if some percentage of way to the end
 
-    pass #TODO
-
+    #otherwise leave weights unchanged
+    return weights
+    
 def TryStepBack(weights,stepBackReq):
     """to be called on the next note in case a jump is necessary (2 intreval up or down depending on direction)
     should work regardless of scale specified outside of function
@@ -214,19 +228,32 @@ def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
     s.append(currNote) #sharps are # and flats are -,quarterLength 4 is whole note
     #keep track of leaps
     leapHistory = 0
+    #keep track of frequency of highest note
+    climaxCounter = 0
+    currentClimax = note.Note(tonic,quarterLength=noteLength)
     for i in range(cfLength-3):
         #initialize probability distribution
         weights=[1]*25
         #limit intervals to intervals in scale
-        weights = LimitToMajorScale(weights,tonic,currNote)
+        weights = LimitToMajorScale(weights[:],tonic,currNote)
 
         #have a check here to make sure interval doesn't go out of singers vocal range( not too far)
-        weights = LimitToRange(weights,tonic,currNote)
+        weights = LimitToRange(weights[:],tonic,currNote)
 
-        weights = LimitLeaps(weights,leapHistory)
+        #weights = MakeStepwiseMoreLikely(weights)
+        weights = LimitLeaps(weights[:],leapHistory)
+
+        if (currNote.pitch > currentClimax.pitch):
+            #if current note is higher than current climax, make that the new climax and adjust counter
+            currentClimax = currNote
+            climaxCounter = 1
+        elif (currNote.pitch == currentClimax.pitch):
+            #if current note is the same then increase climaxcounter by 1
+            climaxCounter +=1
+        weights = EnsureClimaxHappens(weights[:], climaxCounter)
 
         #call stepback function
-        weights = TryStepBack(weights,stepBackReq)
+        weights = TryStepBack(weights[:],stepBackReq)
 
         if verbose:
             print("Weights: ", weights)
@@ -278,3 +305,4 @@ if __name__ == "__main__":
 #1  avoid dissonant leaps, but may be ok if step back(add back possibility in scale)
 #4  in minor, follow path of melodic minor (major up minor down)
 #5 allow arpeggios
+#6 need a different function to guide melody to a cadence depending on the percentage of the way to the end 

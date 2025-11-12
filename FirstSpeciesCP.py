@@ -14,9 +14,18 @@ def produceCPFS(cf, verbose =False):
 
     if verbose:
         print(cf)
-    for note in cf:
-        #for each note
-        pass
+    cfstream = stream.Part(cf)
+    noteLength = cf[0].quarterLength
+    cpfsstream = stream.Part()
+    for cfnote in cf:
+        #for each note TODO implement rules of counterpoint to add correct notes
+        cpfsstream.append(note.Note("C4",quarterLength=noteLength))
+    
+    #figure out how to show two streams at once
+    fullpiece = stream.Stream()
+    fullpiece.insert(0,cfstream)
+    fullpiece.insert(0,cpfsstream)
+    fullpiece.show()
 
 
 
