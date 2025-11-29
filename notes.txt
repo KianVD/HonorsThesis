@@ -27,3 +27,9 @@
 
 -------------------------------Nov 12 -------------------------------------
 #how far should climax be from beginning and end, and how much does that matter
+add early stopping for ending after 8 notes
+genetic algorithm
+some paths dont work
+-------------------------------Nov 19--------------------------------------
+build a tree 
+generate all possible first species counterpoints 

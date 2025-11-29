@@ -146,10 +146,10 @@ def EnsureClimaxHappens(weights,climaxCounter):
 
     #case 1: 
     # starts on tonics and goes down, need to make upward leaps more likely TODO dont do this too early
-    """if climaxCounter == 0:
+    if climaxCounter == 0:
         for i in range(len(EveryPossibleInterval)):
             weights[i] *= 1 if EveryPossibleInterval[i] in UpwardsLeaps else .5
-        return weights"""
+        return weights
 
     #case 2:
     #highest note has been repeated, make any upward motion more likely
@@ -161,6 +161,7 @@ def EnsureClimaxHappens(weights,climaxCounter):
     #case 3:
     #nearing the end, make upward leaps less likely
     #if some percentage of way to the end
+    
 
     #otherwise leave weights unchanged
     return weights
