@@ -41,3 +41,4 @@ wahts the best move in a scenario
 
 --------------------------spring
 to simplify the  problem, there will be no dissonant leaps, 
+google colab will be a good idea once this is up and running

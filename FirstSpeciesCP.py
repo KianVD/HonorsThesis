@@ -1,7 +1,6 @@
 """start thinking about how go about this"""
 from CFWithFilters import *
 from music21 import *
-from FSFilters import *
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 class TreeNode():
@@ -11,116 +10,154 @@ class TreeNode():
         self.accept = accept
 
 
+class FSProducer():
+    def __init__(self,epi):
+        self.every_possible_interval = epi
+
+    def produceFS(self,cf, verbose =False):
+        """given the cantus firmus, produce a first species counterpoint melody that lines up with 
+        counterpoint rules and print both melodies 
+
+        for now assume quarterLength is always 1 when creating notes (default)
+        
+        @params
+        list cf a list of music21 notes corresponding to the cantus firmus"""
+
+        if verbose:
+            print(cf)
+            print("\nlength: ",len(cf),"\n")
+        #create streams for cantus firmus and first species
+        cfstream = stream.Part(cf)
+        fsstream = stream.Part()
+        #start with blank node (because there are multiple possible starting notes (1  3 and 5))
+        root = TreeNode("N/A",False)
+        #get length of cf 
+        cflen = len(cf)
+        #insert dummy at start of cf for generating tree
+        cf.insert(0,"N/A")
+        #create tree
+        self.generateFSTree(root,cflen,cf,0)
+        #traverse tree and add get random valid path
+        fs = self.traverseTreeDFS(root,True)
+        #add fs to fsstream
+        for nnote in fs:
+            fsstream.append(nnote)
+        
+        #create full stream
+        fullpiece = stream.Stream()
+        #insert first species stream
+        fullpiece.insert(0,fsstream)
+        #insert cantus firmus stream
+        fullpiece.insert(0,cfstream)
+        fullpiece.show()
+
+    def generateFSTree(self,parent, nodesLeft,cf,stepBackReq):
+        """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
+        final, correct paths will have a value of True as their accepting parameter, indicating the path to get 
+        to that node was a valid counterpoint
+        
+        @params
+        parent parent of currnode
+        nodesLeft how many nodes until first species is finished
+        cf original cantus firmus"""
+        #find possible notes
+        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],stepBackReq,cf[1].transpose("P8"),True)#TODO allow for minor
+        #add each note onto tree as node
+        for n in possibleNotes:
+            if nodesLeft <= 1: #base case, final note
+                newNode = TreeNode(n,True)
+                parent.children.append(newNode)
+            else: #continue tree at next step
+                newNode = TreeNode(n,False)
+                parent.children.append(newNode)
+                self.generateFSTree(newNode,nodesLeft-1,cf,stepBackReq)
 
 
-def produceFS(cf, verbose =False):
-    """given the cantus firmus, produce a first species counterpoint melody that lines up with 
-    counterpoint rules and print both melodies 
+    def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major):
+        """returns all possible notes by eliminating intervals from currentFSnote
+        
+        @params
+        currentFSnote string representation of current fsnote (or "N/A")
+        currentCFnote music 21 note (or "N/A")
+        nextCFnote music 21 note (or "N/A")
+        dirJumped indicates direction jumped last interval in fs (>0 means up, <0 means down, 0 means step)
+        tonic the tonic of the scale, as music21 note
+        major whether the cantus firmus in the major scale or not (bool)
+        
+        @return 
+        list of possible notes (music 21 notes)
+        """
 
-    for now assume quarterLength is always 1 when creating notes (default)
-    
-    @params
-    list cf a list of music21 notes corresponding to the cantus firmus"""
+        #check first case
+        if(currentFSnote == "N/A"): #if no notes have been laid yet, possible notes are tonic, third, and fifth
+            return [tonic,tonic.transpose("M3"),tonic.transpose("P5")]
 
-    if verbose:
-        print(cf)
-    #create streams for cantus firmus and first species
-    cfstream = stream.Part(cf)
-    fsstream = stream.Part()
-    #start with blank node (because there are multiple possible starting notes (1  3 and 5))
-    root = TreeNode("N/A",False)
-    #get length of cf 
-    cflen = len(cf)
-    #insert dummy at start of cf for generating tree
-    cf.insert(0,"N/A")
-    #create tree
-    generateFSTree(root,cflen,cf,0)
-    #traverse tree and add get random valid path
-    fs = traverseTree(root)
-    #add fs to fsstream
-    for nnote in fs:
-        fsstream.append(nnote)
-    
-    #create full stream
-    fullpiece = stream.Stream()
-    #insert cantus firmus stream
-    fullpiece.insert(0,cfstream)
-    #insert first species stream
-    fullpiece.insert(0,fsstream)
-    fullpiece.show()
+        weights=[1]*len(self.every_possible_interval)
 
-def generateFSTree(parent, nodesLeft,cf,stepBackReq):
-    """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
-    final, correct paths will have a value of True as their accepting parameter, indicating the path to get 
-    to that node was a valid counterpoint
-    
-    @params
-    parent parent of currnode
-    nodesLeft how many nodes until first species is finished
-    cf original cantus firmus"""
-    #find possible notes
-    possibleNotes = getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],stepBackReq,cf[0],True)#TODO allow for minor
-    #add each note onto tree as node
-    for n in possibleNotes:
-        if nodesLeft <= 1: #base case, final note
-            newNode = TreeNode(n,True)
-            parent.children.append(newNode)
-        else: #continue tree at next step
-            newNode = TreeNode(n,False)
-            parent.children.append(newNode)
-            return generateFSTree(newNode,nodesLeft-1,cf,stepBackReq)
+        if (major):
+            #limit intervals to intervals in scale
+            weights = LimitToMajorScale(weights[:],tonic,currentFSnote)
+        else:
+            pass #TODO
 
+        weights = LimitToRange(weights[:],tonic.nameWithOctave,currentFSnote)#TODO make it so all these functions accept music21 notes note strings
 
-def getPossibleNotes(currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major):
-    """returns all possible notes by eliminating intervals from currentFSnote
-    
-    @params
-    currentFSnote string representation of current fsnote (or "N/A")
-    currentCFnote music 21 note (or "N/A")
-    nextCFnote music 21 note (or "N/A")
-    dirJumped indicates direction jumped last interval in fs (>0 means up, <0 means down, 0 means step)
-    tonic the tonic of the scale, as 
-    major whether the cantus firmus in the major scale or not (bool)
-    
-    @return 
-    list of possible notes (music 21 notes)
-    """
-    
+        #once all filters have been applied------------------
 
-    return [note.Note("C4")]
+        possibleNotes = []
+        for i in range(len(weights)):
+            if weights[i] != 0:
+                associatedInterval = self.every_possible_interval[i]
+                possibleNotes.append(currentFSnote.transpose(associatedInterval))
 
-def traverseTree(root):
-    """
-    traverses the built tree and choose a random path off the tree to return as list of notes
+        return possibleNotes
 
-    @params
-    root node to traverse from
-    
-    @return
-    list of notes (music21 notes)"""
+    def traverseTreeDFS(self,root,randomPush=False):
+        """
+        traverses the built tree and choose a depth first path off the tree to return as list of notes
 
-    #traverse tree starting at root and return list of notes with stack
-    currnode = root
-    stack = []
-    path = [] #dont add first node to path, that is dummy node
-    while currnode.accept == False:
-        #if there are no children and 
-        #put all children of node in list
-        for child in currnode.children:
-            stack.append(child)
-        #pop first out 
-        currnode = stack.pop()
-        path.append(currnode.nodenote)
-    
+        @params
+        root node to traverse from
+        randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
+        
+        @return
+        list of notes (music21 notes)"""
 
-    return path
+        #traverse tree starting at root and return list of notes with stack
+        currnode = root
+        stack = []
+        path = [] #dont add first node to path, that is dummy node
+        while currnode.accept == False:
+            #put all children of node in list
+            if randomPush:
+                #create a list of indices and scramble it
+                ind = []
+                for i in range(len(currnode.children)):
+                    ind.append(i) 
+                random.shuffle(ind)
+                print(ind)
+                #add children in new order
+                for i in ind:
+                    stack.append(currnode.children[i])
+
+            else:
+                for child in currnode.children:
+                    stack.append(child)
+            #pop first out 
+            currnode = stack.pop()
+            path.append(currnode.nodenote)
+        
+
+        return path
 
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(8,16,1,"C4")
+    cf = produceCF(8,8,1,"C4")
 
-    produceFS(cf,verbose=True)
+    FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
+    
+    FScomposer.produceFS(cf,verbose=True)
 
 
 if __name__ == "__main__":

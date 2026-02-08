@@ -5,7 +5,7 @@ import random
 
 
 #global var
-EveryPossibleInterval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
+EVERY_POSSIBLE_INTERVAL = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
 #using D5 for tritone cuz idk (also len 25)
 MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],
                       2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
@@ -40,8 +40,8 @@ def LimitToMajorScale(weights,tonic,currNote):
     #use dictionary for scale
     AllowedIntervals = MajorIntervalsFull[scaleDegree]
 
-    for i in range(len(EveryPossibleInterval)):
-        weights[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
+    for i in range(len(EVERY_POSSIBLE_INTERVAL)):
+        weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in AllowedIntervals else 0
 
     return weights
 
@@ -80,23 +80,23 @@ def LimitToRange(weights,tonic,currNote):
     #find index of currtoext in everypossibleinterval #TODO handle error (do interval equivalencies)
     if currToExtName =="-P1":
         currToExtName = "P1"
-    extremeIndex = EveryPossibleInterval.index(currToExtName)
+    extremeIndex = EVERY_POSSIBLE_INTERVAL.index(currToExtName)
 
     UnallowedIntervals = []
 
     if (isLower):
         #if currnote is lower than tonic, remove all intervals below
         #get subset of everypossibleinterval from start to extremeindex exclusive
-        UnallowedIntervals.extend(EveryPossibleInterval[:extremeIndex])
+        UnallowedIntervals.extend(EVERY_POSSIBLE_INTERVAL[:extremeIndex])
     else:
         #if currnote is higher than tonic, remove all intervals above
         #get subset of everypossibleinterval from extremeindex exclusive to end
-        UnallowedIntervals.extend(EveryPossibleInterval[extremeIndex+1:])
+        UnallowedIntervals.extend(EVERY_POSSIBLE_INTERVAL[extremeIndex+1:])
 
 
-    for i in range(len(EveryPossibleInterval)):
+    for i in range(len(EVERY_POSSIBLE_INTERVAL)):
         #is the resulting note from this too far from tonic?
-        weights[i] *= 0 if EveryPossibleInterval[i] in UnallowedIntervals else 1
+        weights[i] *= 0 if EVERY_POSSIBLE_INTERVAL[i] in UnallowedIntervals else 1
 
     return weights
 
@@ -109,8 +109,8 @@ def MakeStepwiseMoreLikely(weights):
     @return prob"""
     FavoredIntervals = ["m2","M2","-m2","-M2"]
 
-    for i in range(len(EveryPossibleInterval)):
-        weights[i] *= 1 if EveryPossibleInterval[i] in FavoredIntervals else .5
+    for i in range(len(EVERY_POSSIBLE_INTERVAL)):
+        weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in FavoredIntervals else .5
     return weights
 
 def LimitLeaps(weights, history):
@@ -127,9 +127,9 @@ def LimitLeaps(weights, history):
     #make leaps less likely
     notleaps = ["P1","M2","M3","m2","m3","-M2","-m2","-M3","-m3"] #small interval ragne
 
-    for i in range(len(EveryPossibleInterval)):
+    for i in range(len(EVERY_POSSIBLE_INTERVAL)):
         #leave weight alone if it is not a leap, otherwise, multiply it by factor
-        weights[i] *= 1 if EveryPossibleInterval[i] in notleaps else factor
+        weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in notleaps else factor
     return weights   
 
 def EnsureClimaxHappens(weights,climaxCounter):
@@ -147,15 +147,15 @@ def EnsureClimaxHappens(weights,climaxCounter):
     #case 1: 
     # starts on tonics and goes down, need to make upward leaps more likely TODO dont do this too early
     if climaxCounter == 0:
-        for i in range(len(EveryPossibleInterval)):
-            weights[i] *= 1 if EveryPossibleInterval[i] in UpwardsLeaps else .5
+        for i in range(len(EVERY_POSSIBLE_INTERVAL)):
+            weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in UpwardsLeaps else .5
         return weights
 
     #case 2:
     #highest note has been repeated, make any upward motion more likely
     if climaxCounter > 1:
-        for i in range(len(EveryPossibleInterval)):
-            weights[i] *= 1 if EveryPossibleInterval[i] in UpwardsAll else .5
+        for i in range(len(EVERY_POSSIBLE_INTERVAL)):
+            weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in UpwardsAll else .5
         return weights
 
     #case 3:
@@ -181,8 +181,8 @@ def TryStepBack(weights,stepBackReq):
     else:
         return weights
 
-    for i in range(len(EveryPossibleInterval)):
-        weights[i] *= 1 if EveryPossibleInterval[i] in AllowedIntervals else 0
+    for i in range(len(EVERY_POSSIBLE_INTERVAL)):
+        weights[i] *= 1 if EVERY_POSSIBLE_INTERVAL[i] in AllowedIntervals else 0
 
     return weights
 
@@ -259,7 +259,7 @@ def produceCF(minlen,maxlen,noteLength,tonic,verbose = False):
         if verbose:
             print("Weights: ", weights)
         #give interval based on scale degree
-        nextInterval = random.choices(EveryPossibleInterval,weights=weights,k=1)[0] #TODO handle 0 available choices
+        nextInterval = random.choices(EVERY_POSSIBLE_INTERVAL,weights=weights,k=1)[0] #TODO handle 0 available choices
         if verbose:
             print("Next Interval: ", nextInterval)
         currNote = currNote.transpose(nextInterval)
