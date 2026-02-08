@@ -33,3 +33,11 @@ some paths dont work
 -------------------------------Nov 19--------------------------------------
 build a tree 
 generate all possible first species counterpoints 
+
+de
+how to optimize counterpoints
+wahts the best move in a scenario
+
+
+--------------------------spring
+to simplify the  problem, there will be no dissonant leaps, 

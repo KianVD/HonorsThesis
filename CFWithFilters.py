@@ -171,7 +171,7 @@ def TryStepBack(weights,stepBackReq):
     should work regardless of scale specified outside of function
     
     @param prob current prob dist we are working with
-    @param stepBackReq indicates direction to jump (>0 means jump down)
+    @param stepBackReq indicates direction to jump (>0 means step down)
     
     @return prob dist"""
     if stepBackReq > 0:
