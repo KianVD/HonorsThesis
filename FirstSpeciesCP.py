@@ -1,6 +1,7 @@
 """start thinking about how go about this"""
 from CFWithFilters import *
 from music21 import *
+from FSFilters import *
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 class TreeNode():
@@ -58,7 +59,7 @@ def generateFSTree(parent, nodesLeft,cf,stepBackReq):
     nodesLeft how many nodes until first species is finished
     cf original cantus firmus"""
     #find possible notes
-    possibleNotes = getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],stepBackReq)
+    possibleNotes = getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],stepBackReq,cf[0],True)#TODO allow for minor
     #add each note onto tree as node
     for n in possibleNotes:
         if nodesLeft <= 1: #base case, final note
@@ -70,19 +71,21 @@ def generateFSTree(parent, nodesLeft,cf,stepBackReq):
             return generateFSTree(newNode,nodesLeft-1,cf,stepBackReq)
 
 
-def getPossibleNotes(currentFSnote,currentCFnote,nextCFnote,dirJumped):
-    """returns all possible notes
+def getPossibleNotes(currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major):
+    """returns all possible notes by eliminating intervals from currentFSnote
     
     @params
     currentFSnote string representation of current fsnote (or "N/A")
     currentCFnote music 21 note (or "N/A")
     nextCFnote music 21 note (or "N/A")
     dirJumped indicates direction jumped last interval in fs (>0 means up, <0 means down, 0 means step)
+    tonic the tonic of the scale, as 
+    major whether the cantus firmus in the major scale or not (bool)
     
     @return 
     list of possible notes (music 21 notes)
     """
-
+    
 
     return [note.Note("C4")]
 
@@ -91,6 +94,7 @@ def traverseTree(root):
     traverses the built tree and choose a random path off the tree to return as list of notes
 
     @params
+    root node to traverse from
     
     @return
     list of notes (music21 notes)"""
@@ -110,18 +114,6 @@ def traverseTree(root):
     
 
     return path
-
-def traverseTreeRecursive(currnode,path):
-    #base case
-    if currnode.accept == False and not currnode.children:
-        return 
-    elif currnode.accept == True and not currnode.children:
-        return #a"ccepting:
-    else:
-        for child in currnode.children:
-            path.append(child)
-            currpath = traverseTreeRecursive(child,path) #stop here if you get to a node
-            path.pop()
 
 
 def main():
