@@ -65,7 +65,7 @@ class FSProducer():
         nodesLeft how many nodes until first species is finished
         cf original cantus firmus"""
         #find possible notes #TODO return weights instead of notes and convert to ntoes out here, to make finding dirJumped easier
-        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True)#TODO allow for minor
+        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True,nodesLeft)#TODO allow for minor
         #add each note onto tree as node
         for n in possibleNotes:
             if nodesLeft <= 1: #base case, final note
@@ -91,8 +91,41 @@ class FSProducer():
         for i in preserved_indeces:
             newMatrix[i,i] = 1
         return newMatrix
+    
+    def EnsureCadence(self,weights,currentFSnote,tonic,nodesLeft):
+        """ensures the  cadence happens
+        
+        @param weights
+        nodesleft
+        """
 
-    def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major):
+        if nodesLeft == 2:
+            # find intervals from currentfsnote to 2 semitones above tonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
+            # regardless of minor or major scale, these are the only two notes for cadence
+            #multiply those times 1, else by 0
+            sd2 = tonic.transpose("M2")
+            sd7 = tonic.transpose("-m2")
+            possibleIntervals = []
+            acceptableInterval1 = interval.Interval(currentFSnote,sd2)
+            acceptableInterval2 = interval.Interval(currentFSnote,sd7)
+
+            for itvl in [acceptableInterval2,acceptableInterval1]:
+                if abs(itvl.semitones) <= 12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                    possibleIntervals.append(itvl.semitones+12)
+            return weights @ self.partialPreservingMatrix(possibleIntervals)
+            
+
+
+        elif nodesLeft == 1:
+            #find interval from currentfsnote to tonic 
+            #multilply that times 1 else by 0
+            acceptableInterval = interval.Interval(currentFSnote,tonic)
+            return weights @ self.partialPreservingMatrix([acceptableInterval.semitones + 12])
+
+        else:
+            return weights
+
+    def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major,nodesLeft):
         """returns all possible notes by eliminating intervals from currentFSnote
         
         @params
@@ -102,6 +135,7 @@ class FSProducer():
         dirJumped indicates direction jumped last interval in fs (>0 means up, <0 means down, 0 means step)
         tonic the tonic of the scale, as music21 note
         major whether the cantus firmus in the major scale or not (bool)
+        nodesLeft how many nodes/notes are left in the song
         
         @return 
         list of possible notes (music 21 notes)
@@ -118,7 +152,7 @@ class FSProducer():
         #1) limit to key
         if (major):
             #limit intervals to intervals in scale
-            weights = LimitToMajorScale(weights[:],tonic,currentFSnote)
+            weights = LimitToMajorScale(weights[:],tonic,currentFSnote) #TODO need to allow P1 in major scale
         else:
             pass #TODO
         #2) limit to range
@@ -129,7 +163,7 @@ class FSProducer():
         elif (dirJumped < 0):
             weights = weights @ self.partialPreservingMatrix([13,14,15,16])#stepwise up
         #4) end in cadence
-        #TODO
+        weights = self.EnsureCadence(weights,currentFSnote,tonic,nodesLeft)
         #first species exclusive filters
         #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
         weights = LimitToConsonantVertical(weights[:],currentFSnote,nextCFnote)
