@@ -2,6 +2,7 @@
 from CFWithFilters import *
 from music21 import *
 import numpy as np
+from FirstSpeciesFilters import *
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 class TreeNode():
@@ -128,18 +129,18 @@ class FSProducer():
         elif (dirJumped < 0):
             weights = weights @ self.partialPreservingMatrix([13,14,15,16])#stepwise up
         #4) end in cadence
-
+        #TODO
         #first species exclusive filters
-        #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim
-
+        #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
+        weights = LimitToConsonantVertical(weights[:],currentFSnote,nextCFnote)
         #2) no parallel perfect consonances
-
+        #TODO
         #3) no direct perfect intervals
-
+        #TODO
         #4) no simultaneous leaps
-
+        #TODO
         #5)end on opposite cadence
-
+        #TODO
         #once all filters have been applied------------------
 
         possibleNotes = []
@@ -166,7 +167,7 @@ class FSProducer():
         stack = []
         path = [0]*self.cflen #dont add first node to path, that is dummy node
         level = -1
-        while currnode.accept == False:
+        while currnode.accept == False:#there will be an error here is popping from empty stack if no melody works
             #put all children of node in list
             if randomPush:
                 #create a list of indices and scramble it
@@ -192,7 +193,7 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(5,5,1,"C4")
+    cf = produceCF(6,6,1,"C4")
 
     FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
     
