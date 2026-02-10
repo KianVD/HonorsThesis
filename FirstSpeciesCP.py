@@ -1,6 +1,7 @@
 """start thinking about how go about this"""
 from CFWithFilters import *
 from music21 import *
+import numpy as np
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 class TreeNode():
@@ -13,6 +14,7 @@ class TreeNode():
 class FSProducer():
     def __init__(self,epi):
         self.every_possible_interval = epi
+        self.cflen =0
 
     def produceFS(self,cf, verbose =False):
         """given the cantus firmus, produce a first species counterpoint melody that lines up with 
@@ -33,6 +35,7 @@ class FSProducer():
         root = TreeNode("N/A",False)
         #get length of cf 
         cflen = len(cf)
+        self.cflen =cflen
         #insert dummy at start of cf for generating tree
         cf.insert(0,"N/A")
         #create tree
@@ -51,7 +54,7 @@ class FSProducer():
         fullpiece.insert(0,cfstream)
         fullpiece.show()
 
-    def generateFSTree(self,parent, nodesLeft,cf,stepBackReq):
+    def generateFSTree(self,parent, nodesLeft,cf,dirJumped):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
         final, correct paths will have a value of True as their accepting parameter, indicating the path to get 
         to that node was a valid counterpoint
@@ -60,8 +63,8 @@ class FSProducer():
         parent parent of currnode
         nodesLeft how many nodes until first species is finished
         cf original cantus firmus"""
-        #find possible notes
-        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],stepBackReq,cf[1].transpose("P8"),True)#TODO allow for minor
+        #find possible notes #TODO return weights instead of notes and convert to ntoes out here, to make finding dirJumped easier
+        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True)#TODO allow for minor
         #add each note onto tree as node
         for n in possibleNotes:
             if nodesLeft <= 1: #base case, final note
@@ -70,8 +73,24 @@ class FSProducer():
             else: #continue tree at next step
                 newNode = TreeNode(n,False)
                 parent.children.append(newNode)
-                self.generateFSTree(newNode,nodesLeft-1,cf,stepBackReq)
+                #calculate if the chosen note n is more than a third, and update dirJumped accordingly
+                nextDirJumped = 0
+                if parent.nodenote != "N/A":
+                    sm = interval.Interval(n, parent.nodenote).semitones
+                    #TODO semitones will never be negative dummy
+                    if sm > 4:
+                        nextDirJumped = 1
+                    elif sm < 4:
+                        nextDirJumped = -1
 
+                self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped)
+
+    def partialPreservingMatrix(self,preserved_indeces):
+        matrixWidth = len(self.every_possible_interval)
+        newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
+        for i in preserved_indeces:
+            newMatrix[i,i] = 1
+        return newMatrix
 
     def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,tonic,major):
         """returns all possible notes by eliminating intervals from currentFSnote
@@ -94,13 +113,33 @@ class FSProducer():
 
         weights=[1]*len(self.every_possible_interval)
 
+
+        #good melody filters (CF)
+        #1) limit to key
         if (major):
             #limit intervals to intervals in scale
             weights = LimitToMajorScale(weights[:],tonic,currentFSnote)
         else:
             pass #TODO
-
+        #2) limit to range
         weights = LimitToRange(weights[:],tonic.nameWithOctave,currentFSnote)#TODO make it so all these functions accept music21 notes note strings
+        #3) step back after leap 
+        if (dirJumped > 0):
+            weights = weights @ self.partialPreservingMatrix([8,9,10,11])#stepwise down
+        elif (dirJumped < 0):
+            weights = weights @ self.partialPreservingMatrix([13,14,15,16])#stepwise up
+        #4) end in cadence
+
+        #first species exclusive filters
+        #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim
+
+        #2) no parallel perfect consonances
+
+        #3) no direct perfect intervals
+
+        #4) no simultaneous leaps
+
+        #5)end on opposite cadence
 
         #once all filters have been applied------------------
 
@@ -121,12 +160,13 @@ class FSProducer():
         randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
         
         @return
-        list of notes (music21 notes)"""
+        list of notes (music21 notes)"""#TODO this function is wrong because if a path is wrong, the notes stay on the path list (may need recursive)
 
         #traverse tree starting at root and return list of notes with stack
         currnode = root
         stack = []
-        path = [] #dont add first node to path, that is dummy node
+        path = [0]*self.cflen #dont add first node to path, that is dummy node
+        level = -1
         while currnode.accept == False:
             #put all children of node in list
             if randomPush:
@@ -138,14 +178,14 @@ class FSProducer():
                 print(ind)
                 #add children in new order
                 for i in ind:
-                    stack.append(currnode.children[i])
+                    stack.append((currnode.children[i],level+1))
 
             else:
                 for child in currnode.children:
-                    stack.append(child)
+                    stack.append((child,level+1))
             #pop first out 
-            currnode = stack.pop()
-            path.append(currnode.nodenote)
+            currnode,level = stack.pop()
+            path[level] = currnode.nodenote
         
 
         return path
@@ -153,7 +193,7 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(8,8,1,"C4")
+    cf = produceCF(5,5,1,"C4")
 
     FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
     
