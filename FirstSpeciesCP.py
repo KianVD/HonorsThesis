@@ -76,8 +76,7 @@ class FSProducer():
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = 0
                 if parent.nodenote != "N/A":
-                    sm = interval.Interval(n, parent.nodenote).semitones
-                    #TODO semitones will never be negative dummy
+                    sm = interval.Interval(parent.nodenote, n).semitones #make sure the first note is on the left here
                     if sm > 4:
                         nextDirJumped = 1
                     elif sm < 4:
