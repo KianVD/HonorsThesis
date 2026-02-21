@@ -4,6 +4,8 @@ from music21 import *
 import numpy as np
 from FirstSpeciesFilters import *
 
+#TODO put all functions in the FSProducer class so it can call from self rather than using global var
+
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 class TreeNode():
     def __init__ (self,nodenote,accept):
@@ -86,10 +88,25 @@ class FSProducer():
                 self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped)
 
     def partialIdentityMatrix(self,preserved_indeces):
+        """creates an identity matrix of size of every possible interval,
+        with only the specified diagonals remaining
+        
+        @param preserved_indices indices to keep"""
         matrixWidth = len(self.every_possible_interval)
         newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
         for i in preserved_indeces:
             newMatrix[i,i] = 1
+        return newMatrix
+    def partialIdentityMatrixDelete(self,deleted_indices):
+        """creates an identity matrix of size of every possible interval,
+        with only the specified diagonals as 0
+        
+        @param preserved_indices indices to delete"""
+        matrixWidth = len(self.every_possible_interval)
+        newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
+        for i in range(len(self.every_possible_interval)):
+            if i not in deleted_indices:
+                newMatrix[i,i] = 1
         return newMatrix
     
     def EnsureCadence(self,weights,currentFSnote,transtonic,nodesLeft):
@@ -146,6 +163,53 @@ class FSProducer():
 
         
         return weights
+    
+    def AvoidParallelPerfectConsonance(self,weights,currentCFnote,nextCFnote, currentFSnote):
+
+        verticalinterval = interval.Interval(currentCFnote,currentFSnote)
+
+        #if interval between current cf and fs is perfect
+        if((abs(verticalinterval.semitones == 5)%12) in [7,0]):
+            #then find interval from current cf to next cf
+            horintervalcf = interval.Interval(currentCFnote,nextCFnote)
+
+            #this interval is not allowed
+            return weights @ self.partialIdentityMatrixDelete([horintervalcf.semitones+12])
+        else:
+
+            return weights
+
+    def AvoidDirectPerfectIntervals(self,weights,currentCFnote,nextCFnote, currentFSnote):
+
+        #for every possible next fs interval, 
+        for i in range(len(weights)):
+            if weights[i] != 0: #theres no point calculating it on stuff thats already 0
+                #if the fs interval is not by step
+                if(i not in [8,9,10,11,13,14,15,16]):
+                    #and if the vertical interval between that resulting note and next cfnote is perfect,
+                    vertinterval = interval.Interval(nextCFnote, currentFSnote.transpose(self.every_possible_interval[i]))
+                    if ((abs(vertinterval.semitones)%12) in [7,0]):
+                        #and if the interval is similar to cf interval
+                        #cf interval polarity
+                        cfinterval = interval.Interval(currentCFnote,nextCFnote).semitones
+                        cfintervalpolarity = cfinterval/abs(cfinterval)
+                        #fs interval polarity
+                        fsintervalpolarity = 0
+                        if self.every_possible_interval[i][0] == "-":
+                            fsintervalpolarity = -1
+                        else:
+                            fsintervalpolarity = 1
+                        if (fsintervalpolarity == cfintervalpolarity):
+                            #then delete it
+                            weights = weights @ self.partialIdentityMatrixDelete([i]) #i is already in terms of every possible interval (no need to add 12)
+        return weights
+    
+    def NoSimultaneousLeaps(self,weights,currentCFnote,nextCFnote):
+
+        cfinterval = interval.Interval(currentCFnote,nextCFnote)
+        if(abs(cfinterval.semitones) > 4):
+            return weights @ self.partialIdentityMatrix([8,9,10,11,12,13,14,15,16])
+        return weights
 
     def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,transtonic,major,nodesLeft):
         """returns all possible notes by eliminating intervals from currentFSnote
@@ -174,11 +238,11 @@ class FSProducer():
         #1) limit to key
         if (major):
             #limit intervals to intervals in scale
-            weights = LimitToMajorScale(weights[:],transtonic,currentFSnote) #TODO need to allow P1 in major scale
+            weights = LimitToMajorScale(weights,transtonic,currentFSnote) 
         else:
             pass #TODO
         #2) limit to range
-        weights = LimitToRange(weights[:],transtonic.nameWithOctave,currentFSnote)#TODO make it so all these functions accept music21 notes note strings
+        weights = LimitToRange(weights,transtonic.nameWithOctave,currentFSnote)#TODO make it so all these functions accept music21 notes note strings
         #3) step back after leap 
         if (dirJumped > 0):
             weights = weights @ self.partialIdentityMatrix([8,9,10,11])#stepwise down
@@ -188,12 +252,16 @@ class FSProducer():
         weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
         #first species exclusive filters
         #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
-        weights = LimitToConsonantVertical(weights[:],currentFSnote,nextCFnote)
+        weights = LimitToConsonantVertical(weights,currentFSnote,nextCFnote)
         #2) no parallel perfect consonances
+        weights = self.AvoidParallelPerfectConsonance(weights,currentCFnote,nextCFnote,currentFSnote)
+        #2.5) no contrary perfect intervals
         #TODO
         #3) no direct perfect intervals
-        #TODO
+        weights = self.AvoidDirectPerfectIntervals(weights,currentCFnote,nextCFnote,currentFSnote)
         #4) no simultaneous leaps
+        weights = self.NoSimultaneousLeaps(weights,currentCFnote,nextCFnote)
+        #4.5) voices may not overlap or cross
         #TODO
         #5)end on opposite cadence
         weights = self.EnsureOppositeCadence(weights,currentFSnote,transtonic,nodesLeft,nextCFnote)
@@ -216,14 +284,14 @@ class FSProducer():
         randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
         
         @return
-        list of notes (music21 notes)"""#TODO this function is wrong because if a path is wrong, the notes stay on the path list (may need recursive)
+        list of notes (music21 notes)"""
 
         #traverse tree starting at root and return list of notes with stack
         currnode = root
         stack = []
         path = [0]*self.cflen #dont add first node to path, that is dummy node
-        level = -1
-        while currnode.accept == False:#there will be an error here is popping from empty stack if no melody works
+        level = -1 #uses level to set correct note in path, when iterating throuhg
+        while currnode.accept == False:#TODO there will be an error here : popping from empty stack if no melody works
             #put all children of node in list
             if randomPush:
                 #create a list of indices and scramble it
@@ -240,8 +308,11 @@ class FSProducer():
                 for child in currnode.children:
                     stack.append((child,level+1))
             #pop first out 
+            if not stack:#if stack is empty
+                raise Exception("There is no possible first species counter point for this cantus firmus")
+
             currnode,level = stack.pop()
-            path[level] = currnode.nodenote
+            path[level] = currnode.nodenote #set the index level to the new note, rather than appending
         
 
         return path
@@ -249,11 +320,16 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(6,6,1,"C4")
+    cf = produceCF(7,7,1,"C4")
 
     FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
-    
-    FScomposer.produceFS(cf,verbose=True)
+
+
+    cf1 = [note.Note("F4"),note.Note("G4"),note.Note("A4"),note.Note("F4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("C5"),note.Note("A4"),note.Note("F4"),note.Note("G4"),note.Note("F4")]
+    cf2 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("D4"),note.Note("C4")]
+
+
+    FScomposer.produceFS(cf2,verbose=True)
 
 
 if __name__ == "__main__":
