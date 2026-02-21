@@ -210,6 +210,26 @@ class FSProducer():
         if(abs(cfinterval.semitones) > 4):
             return weights @ self.partialIdentityMatrix([8,9,10,11,12,13,14,15,16])
         return weights
+    
+    def LimitToConsonantVertical(self,weights,currentFSnote,nextCFnote):
+        """limits to consonant vertical intervals between cf and fs
+        
+        @param weights
+        """
+        #for each interval, calculate the note you would end up at from current fs note
+
+
+        for i in range(len(weights)):
+            if weights[i] != 0: #theres no point calculating it on stuff thats already 0
+                associatedInterval = self.every_possible_interval[i]
+                newnote = currentFSnote.transpose(associatedInterval)#TODO fs is transposed up an octave so this might not work
+
+                # then calculate if the interval between nextcfnote and that note is consonant
+                newInterval = interval.Interval(nextCFnote,newnote)
+                
+                if (abs(newInterval.semitones) % 12) not in [3,4,7,8,9,0]:
+                    weights[i] *= 0
+        return weights
 
     def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,transtonic,major,nodesLeft):
         """returns all possible notes by eliminating intervals from currentFSnote
@@ -252,7 +272,7 @@ class FSProducer():
         weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
         #first species exclusive filters
         #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
-        weights = LimitToConsonantVertical(weights,currentFSnote,nextCFnote)
+        weights = self.LimitToConsonantVertical(weights,currentFSnote,nextCFnote)
         #2) no parallel perfect consonances
         weights = self.AvoidParallelPerfectConsonance(weights,currentCFnote,nextCFnote,currentFSnote)
         #2.5) no contrary perfect intervals
@@ -329,7 +349,7 @@ def main():
     cf2 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("D4"),note.Note("C4")]
 
 
-    FScomposer.produceFS(cf2,verbose=True)
+    FScomposer.produceFS(cf,verbose=True)
 
 
 if __name__ == "__main__":
