@@ -2,7 +2,6 @@
 from CFWithFilters import *
 from music21 import *
 import numpy as np
-from FirstSpeciesFilters import *
 
 #TODO put all functions in the FSProducer class so it can call from self rather than using global var
 
