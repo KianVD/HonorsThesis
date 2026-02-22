@@ -2,6 +2,7 @@
 from CFWithFilters import *
 from music21 import *
 import numpy as np
+from graphviz import Digraph
 
 #TODO put all functions in the FSProducer class so it can call from self rather than using global var
 
@@ -42,6 +43,9 @@ class FSProducer():
         cf.insert(0,"N/A")
         #create tree
         self.generateFSTree(root,cflen,cf,0)
+        #create and render tree viz
+        tree = self.build_graphviz_tree(root)
+        tree.render("tree", format="png", view=True)
         #traverse tree and add get random valid path
         fs = self.traverseTreeDFS(root,True)
         #add fs to fsstream
@@ -293,6 +297,22 @@ class FSProducer():
                 possibleNotes.append(currentFSnote.transpose(associatedInterval))
 
         return possibleNotes
+    def build_graphviz_tree(self,root):
+        dot = Digraph()
+
+        def dfs(node):
+
+            for child in node.children:
+                if child.accept:
+                    dot.node(str(id(child)), child.nodenote.nameWithOctave,color = 'green')
+                else:
+                    dot.node(str(id(child)), child.nodenote.nameWithOctave)
+                dot.edge(str(id(node)), str(id(child)))
+                dfs(child)
+
+        dot.node(str(id(root)), "N/A")
+        dfs(root)
+        return dot
 
     def traverseTreeDFS(self,root,randomPush=False):
         """
@@ -312,20 +332,14 @@ class FSProducer():
         level = -1 #uses level to set correct note in path, when iterating throuhg
         while currnode.accept == False:#TODO there will be an error here : popping from empty stack if no melody works
             #put all children of node in list
+            children = currnode.children[:]
+            #scramble order
             if randomPush:
-                #create a list of indices and scramble it
-                ind = []
-                for i in range(len(currnode.children)):
-                    ind.append(i) 
-                random.shuffle(ind)
-                print(ind)
-                #add children in new order
-                for i in ind:
-                    stack.append((currnode.children[i],level+1))
+                random.shuffle(children)
 
-            else:
-                for child in currnode.children:
-                    stack.append((child,level+1))
+            #add children
+            for child in children:
+                stack.append((child,level+1))
             #pop first out 
             if not stack:#if stack is empty
                 raise Exception("There is no possible first species counter point for this cantus firmus")
@@ -339,22 +353,17 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(7,7,1,"C4")
+    #cf = produceCF(7,7,1,"C4")
 
     FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
 
 
     cf1 = [note.Note("F4"),note.Note("G4"),note.Note("A4"),note.Note("F4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("C5"),note.Note("A4"),note.Note("F4"),note.Note("G4"),note.Note("F4")]
     cf2 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("D4"),note.Note("C4")]
+    cf3 = [note.Note("C4"),note.Note("E4"),note.Note("B3"),note.Note("C4"),note.Note("G3"),note.Note("D4"),note.Note("C4")]
 
-
-    FScomposer.produceFS(cf,verbose=True)
+    FScomposer.produceFS(cf3,verbose=True)
 
 
 if __name__ == "__main__":
     main()
-
-#Required filters:
-#0 same principles as cf?
-#1 #Consonant vertical intervals only (1,3,5,6 only)
-#2
