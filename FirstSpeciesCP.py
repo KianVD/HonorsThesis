@@ -58,7 +58,8 @@ class FSProducer():
         fullpiece.insert(0,fsstream)
         #insert cantus firmus stream
         fullpiece.insert(0,cfstream)
-        fullpiece.show()
+        if verbose:
+            fullpiece.show()
 
     def generateFSTree(self,parent, nodesLeft,cf,dirJumped):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
@@ -81,13 +82,13 @@ class FSProducer():
                 parent.children.append(newNode)
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = 0
+                sm = 0
                 if parent.nodenote != "N/A":
                     sm = interval.Interval(parent.nodenote, n).semitones #make sure the first note is on the left here
                     if sm > 4:
                         nextDirJumped = 1
-                    elif sm < 4:
+                    elif sm < -4:
                         nextDirJumped = -1
-
                 self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped)
 
     def partialIdentityMatrix(self,preserved_indeces):
@@ -118,19 +119,23 @@ class FSProducer():
         @param weights
         nodesleft
         """
+        possibleIntervals = []
+        acceptableIntervals = []
+        # allow it to end on cf tonic transposed up 1 octave or 2 octaves
 
         if nodesLeft == 2:
             # find intervals from currentfsnote to 2 semitones above transtonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
             # regardless of minor or major scale, these are the only two notes for cadence
             #multiply those times 1, else by 0
-            sd2 = transtonic.transpose("M2")
-            sd7 = transtonic.transpose("-m2")
-            possibleIntervals = []
-            acceptableInterval1 = interval.Interval(currentFSnote,sd2)
-            acceptableInterval2 = interval.Interval(currentFSnote,sd7)
+            cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m2"),transtonic.transpose("M7")]
 
-            for itvl in [acceptableInterval2,acceptableInterval1]:
-                if abs(itvl.semitones) <= 12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+            
+            #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)
+            for cbnote in cadenceBeginnings:
+                acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+
+            for itvl in acceptableIntervals:
+                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
                     possibleIntervals.append(itvl.semitones+12)
             return weights @ self.partialIdentityMatrix(possibleIntervals)
             
@@ -139,30 +144,44 @@ class FSProducer():
         elif nodesLeft == 1:
             #find interval from currentfsnote to transtonic 
             #multilply that times 1 else by 0
-            acceptableInterval = interval.Interval(currentFSnote,transtonic)
-            return weights @ self.partialIdentityMatrix([acceptableInterval.semitones + 12])
+            acceptableIntervals = [interval.Interval(currentFSnote,transtonic),interval.Interval(currentFSnote,transtonic.transpose("P8"))]
+            for itvl in acceptableIntervals:
+                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                    possibleIntervals.append(itvl.semitones+12)
+            return weights @ self.partialIdentityMatrix(possibleIntervals)
 
         else:
             return weights
         
     def EnsureOppositeCadence(self,weights,currentFSnote, transtonic,nodesLeft,nextCFnote):
+        """ensures that the first species counterpoint has the opposite cadence from the cantus firmus"""
         if nodesLeft == 2:
+            acceptableIntervals = []
+            cadenceBeginnings = []
+            possibleIntervals = []
             #if there are two notes left, and nextcfnote is 2nd degree we need 7th for fs
             #and vice versa
-            interval1 = interval.Interval(nextCFnote,transtonic.transpose("-P8")) #next CFnote should be second to last
+            interval1 = interval.Interval(nextCFnote,transtonic.transpose("-P8")) #next CFnote should be second to last #this is getting cf tonic
             if interval1.semitones < 0:
-                #cf cadence is 2nd degree to transtonic
-                sd7 = transtonic.transpose("-m2")
-                acceptableInterval2 = interval.Interval(currentFSnote,sd7)
-                if abs(acceptableInterval2.semitones) <= 12:
-                    return weights @ self.partialIdentityMatrix([acceptableInterval2.semitones +12])
+                #cf cadence is 2nd degree to tonic
+                cadenceBeginnings =[transtonic.transpose("-m2"),transtonic.transpose("M7")]
+                for cbnote in cadenceBeginnings:
+                    acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+                for itvl in acceptableIntervals:
+                    if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                        possibleIntervals.append(itvl.semitones+12)
             elif interval1.semitones > 0:
-                sd2 = transtonic.transpose("M2")
-                acceptableInterval1  = interval.Interval(currentFSnote,sd2)
-                if abs(acceptableInterval1.semitones) <= 12:
-                    return weights @ self.partialIdentityMatrix([acceptableInterval1.semitones +12])
+                #cf cadence is 7th degree to tonic
+                cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9")]
+                for cbnote in cadenceBeginnings:
+                    acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+                for itvl in acceptableIntervals:
+                    if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                        possibleIntervals.append(itvl.semitones+12)
             else:
                 print("There is no cadence in cantus firmus")
+
+            return weights @ self.partialIdentityMatrix(possibleIntervals)
 
         
         return weights
@@ -172,7 +191,7 @@ class FSProducer():
         verticalinterval = interval.Interval(currentCFnote,currentFSnote)
 
         #if interval between current cf and fs is perfect
-        if((abs(verticalinterval.semitones == 5)%12) in [7,0]):
+        if((abs(verticalinterval.semitones)%12) in [7,0]):
             #then find interval from current cf to next cf
             horintervalcf = interval.Interval(currentCFnote,nextCFnote)
 
@@ -181,6 +200,22 @@ class FSProducer():
         else:
 
             return weights
+        
+    def AvoidSameConsecutivePerfect(self,weights,currentCFnote,nextCFnote,currentFSnote):
+
+        verticalinterval = interval.Interval(currentCFnote,currentFSnote)
+        currentperfect = (abs(verticalinterval.semitones)%12)
+        if(currentperfect in [7,0]):
+            #loop through each weight thats not already 0
+            for i in range(len(weights)):
+                if weights[i] != 0: #theres no point calculating it on stuff thats already 0
+                    nextFSnote = currentFSnote.transpose(self.every_possible_interval[i])
+                    nextvertinterval = interval.Interval(nextCFnote,nextFSnote)
+                    if (abs(nextvertinterval.semitones)%12) == currentperfect:
+                        weights[i] = 0 #=0, *= 0,  weights @ self.partialIdentityMatrixDelete([i]) all do same thing
+        return weights
+
+
 
     def AvoidDirectPerfectIntervals(self,weights,currentCFnote,nextCFnote, currentFSnote):
 
@@ -225,12 +260,24 @@ class FSProducer():
         for i in range(len(weights)):
             if weights[i] != 0: #theres no point calculating it on stuff thats already 0
                 associatedInterval = self.every_possible_interval[i]
-                newnote = currentFSnote.transpose(associatedInterval)#TODO fs is transposed up an octave so this might not work
+                newnote = currentFSnote.transpose(associatedInterval)
 
                 # then calculate if the interval between nextcfnote and that note is consonant
                 newInterval = interval.Interval(nextCFnote,newnote)
                 
                 if (abs(newInterval.semitones) % 12) not in [3,4,7,8,9,0]:
+                    weights[i] *= 0
+        return weights
+    
+    def NoOverlap(self,weights,nextCFnote,currentFSnote):
+        """ensures no overlap between cantus firmus and fs"""
+        for i in range(len(weights)):
+            if weights[i] != 0: #theres no point calculating it on stuff thats already 0
+                associatedInterval = self.every_possible_interval[i]
+                newnote = currentFSnote.transpose(associatedInterval)
+
+                #if the new note is equal to or lower than cf note, then disqualify it
+                if (newnote.pitch <= nextCFnote.pitch):
                     weights[i] *= 0
         return weights
 
@@ -278,14 +325,14 @@ class FSProducer():
         weights = self.LimitToConsonantVertical(weights,currentFSnote,nextCFnote)
         #2) no parallel perfect consonances
         weights = self.AvoidParallelPerfectConsonance(weights,currentCFnote,nextCFnote,currentFSnote)
-        #2.5) no contrary perfect intervals
-        #TODO
+        #2.5) no contrary perfect intervals (accomplished by avoid same consecutive perfect interval)
+        weights = self.AvoidSameConsecutivePerfect(weights,currentCFnote,nextCFnote,currentFSnote)
         #3) no direct perfect intervals
         weights = self.AvoidDirectPerfectIntervals(weights,currentCFnote,nextCFnote,currentFSnote)
         #4) no simultaneous leaps
         weights = self.NoSimultaneousLeaps(weights,currentCFnote,nextCFnote)
         #4.5) voices may not overlap or cross
-        #TODO
+        weights = self.NoOverlap(weights,nextCFnote,currentFSnote)
         #5)end on opposite cadence
         weights = self.EnsureOppositeCadence(weights,currentFSnote,transtonic,nodesLeft,nextCFnote)
         #once all filters have been applied------------------
