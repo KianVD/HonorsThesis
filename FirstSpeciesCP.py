@@ -3,15 +3,12 @@ from CFWithFilters import *
 from music21 import *
 import numpy as np
 from graphviz import Digraph
+from TreeNode import TreeNode
 
 #TODO put all functions in the FSProducer class so it can call from self rather than using global var
+#TODO add P1 back to possible notes in major sclae for tie
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
-class TreeNode():
-    def __init__ (self,nodenote,accept):
-        self.nodenote = nodenote
-        self.children = []
-        self.accept = accept
 
 
 class FSProducer():
@@ -400,7 +397,7 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    #cf = produceCF(7,7,1,"C4")
+    cf = produceCF(7,7,1,"C4")
 
     FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
 
