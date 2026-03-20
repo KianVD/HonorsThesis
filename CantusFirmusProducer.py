@@ -1,16 +1,102 @@
 """a standalone class to produce tree of cantus firmus based on fux fixed rules
 rules will all be methods of cfproducer class"""
+from CFWithFilters import *
+from music21 import *
+import numpy as np
+from graphviz import Digraph
+from TreeNode import TreeNode
 
 class CFProducer():
     def __init__(self,epi):
         self.every_possible_interval = epi
+        self.n = 0
+        self.root = None
+        self.tree = None
 
-    def produceCF(n,verbose=False):
+    def produceCF(self,n,verbose=False):
         """create and show cantus firmus
         return list of notes"""
 
         if verbose:
             print(f"generating cantus firmus of length {n}")
+        self.n = n
+
+        #init start of tree
+        self.root = TreeNode("N/A",False)
+
+        self.generateTree(self.root,self.n,0)
+
+        #create and render tree viz
+        self.tree = self.build_graphviz_tree(self.root)
+        self.tree.render("tree", format="png", view=True)
+
+        cf = self.traverseTreeDFS(self.root,True)
+
+        if verbose:
+            cfstream = stream.Stream()
+            for nnote in cf:
+                cfstream.append(nnote)
+            cfstream.show()
+
+        return cf
+
+
+    def generateTree(self,parent,nodesLeft,dirJumepd):
+        pass
+
+    def build_graphviz_tree(self,root):
+        dot = Digraph()
+
+        def dfs(node):
+
+            for child in node.children:
+                if child.accept:
+                    dot.node(str(id(child)), child.nodenote.nameWithOctave,color = 'green')
+                else:
+                    dot.node(str(id(child)), child.nodenote.nameWithOctave)
+                dot.edge(str(id(node)), str(id(child)))
+                dfs(child)
+
+        dot.node(str(id(root)), "N/A")
+        dfs(root)
+        return dot
+    
+    def traverseTreeDFS(self,root,randomPush=False):
+        """
+        traverses the built tree and choose a depth first path off the tree to return as list of notes
+
+        @params
+        root node to traverse from
+        randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
+        
+        @return
+        list of notes (music21 notes)"""
+
+        #traverse tree starting at root and return list of notes with stack
+        currnode = root
+        stack = []
+        path = [0]*self.cflen #dont add first node to path, that is dummy node
+        level = -1 #uses level to set correct note in path, when iterating throuhg
+        while currnode.accept == False:#there will be an error here : popping from empty stack if no melody works
+            #put all children of node in list
+            children = currnode.children[:]
+            #scramble order
+            if randomPush:
+                random.shuffle(children)
+
+            #add children
+            for child in children:
+                stack.append((child,level+1))
+            #pop first out 
+            if not stack:#if stack is empty
+                raise Exception("There is no possible first species counter point for this cantus firmus")
+
+            currnode,level = stack.pop()
+            path[level] = currnode.nodenote #set the index level to the new note, rather than appending
+        
+
+        return path
+
 
         
 
