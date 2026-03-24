@@ -13,6 +13,7 @@ class CFProducer():
         self.n = 0
         self.root = None
         self.tree = None
+        self.leaves = []
 
     def produceCF(self,n,tonic,verbose=False):
         """create and show cantus firmus
@@ -25,12 +26,13 @@ class CFProducer():
         #init start of tree
         self.root = TreeNode("N/A",False)
 
-        self.generateTree(self.root,self.n,0,note.Note(tonic))
+        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2)
 
         #create and render tree viz
         self.tree = self.build_graphviz_tree(self.root)
         if verbose:
             self.tree.render("tree", format="png", view=True)
+            print(f"There are {self.possibleCantusFirmuses} possible cantus firmuses of length {n}")
 
         cf = self.traverseTreeDFS(self.root,True)
 
@@ -43,17 +45,20 @@ class CFProducer():
         return cf
 
 
-    def generateTree(self,parent,nodesLeft,dirJumped,tonic):
+    def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount):
         #find possible notes 
-        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft)
+        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,climaxCount)
         #add each note onto tree as node
         for n in possibleNotes:
             if nodesLeft <= 1: #base case, final note
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
+                newNode.parent = parent
+                self.leaves.append(newNode)
             else: #continue tree at next step
                 newNode = TreeNode(n,False)
                 parent.children.append(newNode)
+                newNode.parent = parent
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = 0
                 sm = 0
@@ -63,7 +68,14 @@ class CFProducer():
                         nextDirJumped = 1
                     elif sm < -4:
                         nextDirJumped = -1
-                self.generateFSTree(newNode,nodesLeft-1,nextDirJumped)
+                #calculate the current climax and the nubmer of them
+                if n.pitch > currClimax.pitch:
+                    currClimax = n
+                    climaxCount = 1
+                elif n.pitch == currClimax.pitch:
+                    climaxCount += 1
+                
+                self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,currClimax,climaxCount)
 
     def partialIdentityMatrix(self,preserved_indeces):
         """creates an identity matrix of size of every possible interval,
@@ -86,6 +98,17 @@ class CFProducer():
             if i not in deleted_indices:
                 newMatrix[i,i] = 1
         return newMatrix
+    
+    def EnsureSingleClimax(self,weights,nodesLeft,climaxCount):
+        """if there is one node left, ensure the path has only 1 climax
+        otherwise, do nothing
+        
+        returns weights"""
+        
+        if nodesLeft == 1 and climaxCount > 1:
+            return weights @ self.partialIdentityMatrix([])
+        else:
+            return weights
     
     def EnsureCadence(self,weights,currentFSnote,transtonic,nodesLeft):
         """ensures the  cadence happens
@@ -202,10 +225,11 @@ class CFProducer():
 
         return weights
 
-    def possibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft):
+    def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft,climaxCount):
+        """returns list of possible notes (music21 notes)"""
         #check first case
         if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
-            return tonic
+            return [tonic]
         
         weights=[1]*len(self.every_possible_interval)
 
@@ -219,15 +243,22 @@ class CFProducer():
         #2) limit to range
         weights = self.LimitToRange(weights,tonic.nameWithOctave,currentNote)
         #3) step back after leap 
-        if (dirJumped > 0):
+        if (dirJumped > 0): #TODO also allow possibility of arpeggio here, just make sure that dirJumped is set after the arpeggio
             weights = weights @ self.partialIdentityMatrix([8,9,10,11])#stepwise down
         elif (dirJumped < 0):
             weights = weights @ self.partialIdentityMatrix([13,14,15,16])#stepwise up
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
+        #5) ensure only single climax paths make it to the end
+        weights = self.EnsureSingleClimax(weights,nodesLeft,climaxCount)
 
-        #TODO still need to add climax and arpeggio
-
+        #convert interval weights to notes
+        possibleNotes = []
+        for i in range(len(weights)):
+            if weights[i] != 0:
+                associatedInterval = self.every_possible_interval[i]
+                possibleNotes.append(currentNote.transpose(associatedInterval))
+        return possibleNotes
 
     def build_graphviz_tree(self,root):
         dot = Digraph()
@@ -260,7 +291,7 @@ class CFProducer():
         #traverse tree starting at root and return list of notes with stack
         currnode = root
         stack = []
-        path = [0]*self.cflen #dont add first node to path, that is dummy node
+        path = [0]*self.n #dont add first node to path, that is dummy node
         level = -1 #uses level to set correct note in path, when iterating throuhg
         while currnode.accept == False:#there will be an error here : popping from empty stack if no melody works
             #put all children of node in list
@@ -281,7 +312,18 @@ class CFProducer():
         
 
         return path
-
+    
+    def writeData(self):
+        print(f"There are {len(self.leaves)} possible cantus firmuses of length {self.n}")
+        with open("out.txt","a") as f:
+            for leafNode in self.leaves:
+                notes = [leafNode.nodenote.nameWithOctave]
+                currnode = leafNode
+                for _ in range(self.n-1):
+                    currnode = leafNode.parent
+                    notes.append(currnode.nodenote.nameWithOctave)
+                f.write(" ".join(notes.reverse()))
+                
 def main():
     #every possible interval within an octave from a note
     every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle

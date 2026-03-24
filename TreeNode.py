@@ -3,3 +3,4 @@ class TreeNode():
         self.nodenote = nodenote
         self.children = []
         self.accept = accept
+        self.parent = None
