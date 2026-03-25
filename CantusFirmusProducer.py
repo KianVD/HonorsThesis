@@ -32,7 +32,6 @@ class CFProducer():
         self.tree = self.build_graphviz_tree(self.root)
         if verbose:
             self.tree.render("tree", format="png", view=True)
-            print(f"There are {self.possibleCantusFirmuses} possible cantus firmuses of length {n}")
 
         cf = self.traverseTreeDFS(self.root,True)
 
@@ -41,6 +40,7 @@ class CFProducer():
             for nnote in cf:
                 cfstream.append(nnote)
             cfstream.show()
+            self.writeData("output.txt")
 
         return cf
 
@@ -106,7 +106,7 @@ class CFProducer():
         returns weights"""
         
         if nodesLeft == 1 and climaxCount > 1:
-            return weights @ self.partialIdentityMatrix([])
+            return weights @ self.partialIdentityMatrix([]) #TODO this doesnt work because the last note can be the transposed tonic, so you gotta somehow make sure that doesnt double the climax either
         else:
             return weights
     
@@ -313,16 +313,16 @@ class CFProducer():
 
         return path
     
-    def writeData(self):
+    def writeData(self,filename):
         print(f"There are {len(self.leaves)} possible cantus firmuses of length {self.n}")
-        with open("out.txt","a") as f:
+        with open(filename,"w") as f:
             for leafNode in self.leaves:
                 notes = [leafNode.nodenote.nameWithOctave]
                 currnode = leafNode
                 for _ in range(self.n-1):
-                    currnode = leafNode.parent
+                    currnode = currnode.parent
                     notes.append(currnode.nodenote.nameWithOctave)
-                f.write(" ".join(notes.reverse()))
+                f.write(" ".join(reversed(notes)) + "\n")
                 
 def main():
     #every possible interval within an octave from a note
