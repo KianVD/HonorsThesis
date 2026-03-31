@@ -49,8 +49,25 @@ class CFProducer():
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,climaxCount)
         #add each note onto tree as node
+
         for n in possibleNotes:
+            #get these variables for each possible note
+            nClimax = currClimax
+            nClimaxCount = climaxCount
+
+            #check if climax is duplicated for each note
+            if n.pitch > currClimax.pitch:
+                nClimax = n
+                nClimaxCount = 1
+            elif n.pitch == currClimax.pitch:
+                nClimaxCount += 1
+
+
             if nodesLeft <= 1: #base case, final note
+                #check that the climax isn't duplicated
+                if nClimaxCount > 1:
+                    continue #skip making an accepting node if it will duplicate the climax
+
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
                 newNode.parent = parent
@@ -68,14 +85,8 @@ class CFProducer():
                         nextDirJumped = 1
                     elif sm < -4:
                         nextDirJumped = -1
-                #calculate the current climax and the nubmer of them
-                if n.pitch > currClimax.pitch:
-                    currClimax = n
-                    climaxCount = 1
-                elif n.pitch == currClimax.pitch:
-                    climaxCount += 1
                 
-                self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,currClimax,climaxCount)
+                self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,nClimax,nClimaxCount)
 
     def partialIdentityMatrix(self,preserved_indeces):
         """creates an identity matrix of size of every possible interval,
@@ -110,7 +121,7 @@ class CFProducer():
         else:
             return weights
     
-    def EnsureCadence(self,weights,currentFSnote,transtonic,nodesLeft):
+    def EnsureCadence(self,weights,currentNote,tonic,nodesLeft):
         """ensures the  cadence happens
         
         @param weights
@@ -124,12 +135,12 @@ class CFProducer():
             # find intervals from currentfsnote to 2 semitones above transtonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
             # regardless of minor or major scale, these are the only two notes for cadence
             #multiply those times 1, else by 0
-            cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m2"),transtonic.transpose("M7")]
+            cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7")] #any other 2 or 7 is out of range
 
             
             #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)
             for cbnote in cadenceBeginnings:
-                acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+                acceptableIntervals.append(interval.Interval(currentNote,cbnote))
 
             for itvl in acceptableIntervals:
                 if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
@@ -141,7 +152,7 @@ class CFProducer():
         elif nodesLeft == 1:
             #find interval from currentfsnote to transtonic 
             #multilply that times 1 else by 0
-            acceptableIntervals = [interval.Interval(currentFSnote,transtonic),interval.Interval(currentFSnote,transtonic.transpose("P8"))]
+            acceptableIntervals = [interval.Interval(currentNote,tonic),interval.Interval(currentNote,tonic.transpose("P8")),interval.Interval(currentNote,tonic.transpose("-P8"))]
             for itvl in acceptableIntervals:
                 if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
                     possibleIntervals.append(itvl.semitones+12)
@@ -250,7 +261,7 @@ class CFProducer():
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
         #5) ensure only single climax paths make it to the end
-        weights = self.EnsureSingleClimax(weights,nodesLeft,climaxCount)
+        #weights = self.EnsureSingleClimax(weights,nodesLeft,climaxCount) This is wrong, im checking in generate tree instead
 
         #convert interval weights to notes
         possibleNotes = []

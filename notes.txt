@@ -63,3 +63,10 @@ do minor cantus firmsu and counterpoint"""
 for cantus firmsu***************************
 do the same thing i did for first species (tree)
 follow all the rules
+
+Mar 26------
+still need to do arpeggio
+does 3rd count as leap?
+
+for dynamic range, limit to 1.5 octave above lowest and 1.5 octave below highest
+octave and a third range 
