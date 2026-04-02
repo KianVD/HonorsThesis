@@ -15,7 +15,7 @@ class CFProducer():
         self.tree = None
         self.leaves = []
 
-    def produceCF(self,n,tonic,verbose=False):
+    def produceCF(self,n,tonic,filename="generated_cantus_firmuses",verbose=False):
         """create and show cantus firmus
         return list of notes"""
 
@@ -40,32 +40,73 @@ class CFProducer():
             for nnote in cf:
                 cfstream.append(nnote)
             cfstream.show()
-            self.writeData("output.txt")
+            self.writeData(f"{filename}.txt")
 
         return cf
+    
+    def getNewClimax(self,newNote,currClimax,climaxCount):
+        #check if climax is duplicated for each note
+        if newNote.pitch > currClimax.pitch:
+            currClimax = newNote
+            climaxCount = 1
+        elif newNote.pitch == currClimax.pitch:
+            climaxCount += 1
 
+        return currClimax,climaxCount
+    
+    def getNextDirJumped(self,parent,nextNote,currDirJumped):
+        """returns nextDirJumped for a given nextNote
+        
+        dirJumped: the direction of a leap made to get to current note (accounts for arpeggios)
+        dirJumped key is as follows:
+        0 is no jump
+        1 is jump up besides p4
+        -1 is jump down besides p4
+        2 is perfect fourth up
+        -2 is perfect fourth down
+        3 is perfect fourth then a third up
+        -3 is perfect fourth then a third down
+        
+        returns: nextDirJumped
+        """
+        nextDirJumped = 0
+        sm = 0
+        if parent.nodenote != "N/A":
+            sm = interval.Interval(parent.nodenote, nextNote).semitones #make sure the first note is on the left here
+            if sm > 4: #leap up
+                nextDirJumped = 1
+                if sm == 5:
+                    nextDirJumped = 2 #2 signifies this jump is a perfect fourth up
+            elif sm < -4: #leap down
+                nextDirJumped = -1
+                if sm == -5:
+                    nextDirJumped = -2
+            #new variable to keep track of arpeggios: we can assume there is only 1 4:3:3 pattern in an arpeggio at most 
+            # due to octave and 3rd range, so we only need to keep track of if a 4th leap was made once (3rds arent leaps)
+            #only valid 4th is perfect: 5 semitones
+            if currDirJumped == 2 and sm in [3,4]: #if that last jump was a fourth and this move gonna be a 3rd in same direction (arpeggio)
+                nextDirJumped = 3
+            elif currDirJumped == -2 and sm in [-3,-4]: #down case
+                nextDirJumped = -3
+            elif currDirJumped == 3: #4:3:3 arpeggio has just transpired, need step down
+                nextDirJumped = 1
+            elif currDirJumped == -3: #down case (step up)
+                nextDirJumped = -1
+
+        return nextDirJumped
 
     def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount):
         #find possible notes 
-        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,climaxCount)
+        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft)
         #add each note onto tree as node
 
         for n in possibleNotes:
-            #get these variables for each possible note
-            nClimax = currClimax
-            nClimaxCount = climaxCount
-
-            #check if climax is duplicated for each note
-            if n.pitch > currClimax.pitch:
-                nClimax = n
-                nClimaxCount = 1
-            elif n.pitch == currClimax.pitch:
-                nClimaxCount += 1
-
+            #get these climax variables for each possible note
+            nClimax, nClimaxCount = self.getNewClimax(n,currClimax,climaxCount)
 
             if nodesLeft <= 1: #base case, final note
                 #check that the climax isn't duplicated
-                if nClimaxCount > 1:
+                if nClimaxCount > 1: 
                     continue #skip making an accepting node if it will duplicate the climax
 
                 newNode = TreeNode(n,True)
@@ -77,14 +118,7 @@ class CFProducer():
                 parent.children.append(newNode)
                 newNode.parent = parent
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
-                nextDirJumped = 0
-                sm = 0
-                if parent.nodenote != "N/A":
-                    sm = interval.Interval(parent.nodenote, n).semitones #make sure the first note is on the left here
-                    if sm > 4:
-                        nextDirJumped = 1
-                    elif sm < -4:
-                        nextDirJumped = -1
+                nextDirJumped = self.getNextDirJumped(parent,n,dirJumped)
                 
                 self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,nClimax,nClimaxCount)
 
@@ -109,17 +143,6 @@ class CFProducer():
             if i not in deleted_indices:
                 newMatrix[i,i] = 1
         return newMatrix
-    
-    def EnsureSingleClimax(self,weights,nodesLeft,climaxCount):
-        """if there is one node left, ensure the path has only 1 climax
-        otherwise, do nothing
-        
-        returns weights"""
-        
-        if nodesLeft == 1 and climaxCount > 1:
-            return weights @ self.partialIdentityMatrix([]) #TODO this doesnt work because the last note can be the transposed tonic, so you gotta somehow make sure that doesnt double the climax either
-        else:
-            return weights
     
     def EnsureCadence(self,weights,currentNote,tonic,nodesLeft):
         """ensures the  cadence happens
@@ -236,8 +259,16 @@ class CFProducer():
 
         return weights
 
-    def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft,climaxCount):
-        """returns list of possible notes (music21 notes)"""
+    def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft):
+        """returns list of possible notes (music21 notes)
+        
+        params:
+        currentNote: current music21 note of cantus firmus
+        dirJumped: the direction of a leap made to get to current note (0 is no jump, 1 is jump up, -1 is jump down) 
+            extended - (2 is perfect fourth up, -2 is perfect fourth down, 3 is perfect fourth then a third up, -3 is perfect fourth then a third down)
+        tonic: music21 note of tonic
+        major: boolean whether the cf is major or not
+        nodesLeft: number of remaining notes in cf (1 is the lowest you can expect)"""
         #check first case
         if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
             return [tonic]
@@ -254,14 +285,32 @@ class CFProducer():
         #2) limit to range
         weights = self.LimitToRange(weights,tonic.nameWithOctave,currentNote)
         #3) step back after leap 
-        if (dirJumped > 0): #TODO also allow possibility of arpeggio here, just make sure that dirJumped is set after the arpeggio
-            weights = weights @ self.partialIdentityMatrix([8,9,10,11])#stepwise down
+        if (dirJumped > 0): 
+            possibleStepsAfterLeapUp = [8,9,10,11]#stepwise down
+            #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
+            if dirJumped > 1:
+                #find scale degree to decide between minor or major required to stay in key
+                Major3rd = True #TODO
+                if Major3rd:
+                    possibleStepsAfterLeapUp.append(16)
+                else:
+                    possibleStepsAfterLeapUp.append(15)
+            #get new weights filtred for step backs
+            weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
-            weights = weights @ self.partialIdentityMatrix([13,14,15,16])#stepwise up
+            possibleStepsAfterLeapDown = [13,14,15,16]#stepwise up
+
+            if dirJumped < -1:
+                #find scale degree to decide between minor or major required to stay in key
+                Major3rd = True #TODO
+                if Major3rd:
+                    possibleStepsAfterLeapDown.append(8)
+                else:
+                    possibleStepsAfterLeapDown.append(9)
+            #get new weights
+            weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
-        #5) ensure only single climax paths make it to the end
-        #weights = self.EnsureSingleClimax(weights,nodesLeft,climaxCount) This is wrong, im checking in generate tree instead
 
         #convert interval weights to notes
         possibleNotes = []
