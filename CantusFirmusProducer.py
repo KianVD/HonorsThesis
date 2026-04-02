@@ -290,11 +290,7 @@ class CFProducer():
             #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
             if dirJumped > 1:
                 #find scale degree to decide between minor or major required to stay in key
-                Major3rd = True #TODO
-                if Major3rd:
-                    possibleStepsAfterLeapUp.append(16)
-                else:
-                    possibleStepsAfterLeapUp.append(15)
+                possibleStepsAfterLeapUp.append(15,16) #add both minor and major, limitToKey already handles eliminating the wrong one(if its already 0, itll stay 0)
             #get new weights filtred for step backs
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
@@ -302,11 +298,7 @@ class CFProducer():
 
             if dirJumped < -1:
                 #find scale degree to decide between minor or major required to stay in key
-                Major3rd = True #TODO
-                if Major3rd:
-                    possibleStepsAfterLeapDown.append(8)
-                else:
-                    possibleStepsAfterLeapDown.append(9)
+                possibleStepsAfterLeapDown.append(8,9)
             #get new weights
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
