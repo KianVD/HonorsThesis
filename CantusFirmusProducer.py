@@ -15,18 +15,18 @@ class CFProducer():
         self.tree = None
         self.leaves = []
 
-    def produceCF(self,n,tonic,filename="generated_cantus_firmuses",verbose=False):
+    def produceCF(self,n,tonic,filename="generated_melodies",verbose=False):
         """create and show cantus firmus
         return list of notes"""
 
         if verbose:
-            print(f"generating cantus firmus of length {n}")
+            print(f"generating all cantus firmus of length {n}")
         self.n = n
 
         #init start of tree
         self.root = TreeNode("N/A",False)
 
-        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2)
+        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2,"N/A","N/A")
 
         #create and render tree viz
         self.tree = self.build_graphviz_tree(self.root)
@@ -95,9 +95,22 @@ class CFProducer():
 
         return nextDirJumped
 
-    def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount):
+    def computeNewExtremes(self,lowestNote,highestNote,newNote):
+        """compute extremes and give them back to generate tree to remember"""
+        if lowestNote == "N/A" or highestNote == "N/A":
+            lowestNote = newNote
+            highestNote = newNote
+
+        if lowestNote.pitch > newNote.pitch:
+            lowestNote = newNote
+        if highestNote.pitch < newNote.pitch:
+            highestNote = newNote
+
+        return lowestNote, highestNote
+
+    def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount,lowestNote,highestNote):
         #find possible notes 
-        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft)
+        possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,lowestNote,highestNote)
         #add each note onto tree as node
 
         for n in possibleNotes:
@@ -119,8 +132,10 @@ class CFProducer():
                 newNode.parent = parent
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = self.getNextDirJumped(parent,n,dirJumped)
+                #get the extremes for range calc
+                newLowestNote,newHighestNote = self.computeNewExtremes(lowestNote,highestNote,n)
                 
-                self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,nClimax,nClimaxCount)
+                self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,nClimax,nClimaxCount,newLowestNote,newHighestNote)
 
     def partialIdentityMatrix(self,preserved_indeces):
         """creates an identity matrix of size of every possible interval,
@@ -203,6 +218,44 @@ class CFProducer():
             weights[i] *= 1 if self.every_possible_interval[i] in AllowedIntervals else 0
 
         return weights
+    
+    def LimitToRangeDynamic(self,weights,currNote,lowestNote,highestNote):
+        """a new limit to range function that limits the entire interval of used notes to 1 and a 3rd, 
+        updating the possible region based on 1.3 above lowest and 1.3 below highest
+        
+        @param weights weights
+        @param tonic tonic (text)
+        @param currNote current note (music21 note)
+        @param lowestNote lowestNote in cf so far (music21 note )
+        @param highestNote highestNote in cf so far (music21 note)
+        
+        @return new weights"""
+
+        #compute the bounds and update weights as such---
+        unallowedIntervals = []
+        #find highest allowed note which is 1.3 above lowest note
+        highestValidNote = lowestNote.transpose("M10") #M10 is octave plus major 3rd, max range for cf we decided on
+        #find interval from currNote to highest allowed note
+        currToHighItvl = interval.Interval(currNote,highestValidNote)
+        #find that interval in epi
+        if abs(currToHighItvl.semitones) <= 12 and abs(currToHighItvl.semitones) >= -12:
+            epi_index = currToHighItvl.semitones+12
+            #add anything above that interval to unallowed intervals
+            unallowedIntervals.extend(self.every_possible_interval[:epi_index+1])#stop exclusive
+        #now same for  lowest allowed note
+        lowestValidNote = highestNote.transpose("-M10")
+
+        currToLowItvl = interval.Interval(currNote,lowestValidNote)
+
+        if abs(currToLowItvl.semitones) <= 12 and abs(currToLowItvl.semitones) >= -12:
+            epi_index = currToLowItvl.semitones+12
+            #add anything above that interval to unallowed intervals
+            unallowedIntervals.extend(self.every_possible_interval[epi_index:]) #start inclusive
+
+        return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
+
+        
+
 
     def LimitToRange(self,weights,tonic,currNote):
         """make sure next intervals isnt too high or too low from start note
@@ -259,7 +312,7 @@ class CFProducer():
 
         return weights
 
-    def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft):
+    def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft,lowestNote,highestNote):
         """returns list of possible notes (music21 notes)
         
         params:
@@ -268,7 +321,11 @@ class CFProducer():
             extended - (2 is perfect fourth up, -2 is perfect fourth down, 3 is perfect fourth then a third up, -3 is perfect fourth then a third down)
         tonic: music21 note of tonic
         major: boolean whether the cf is major or not
-        nodesLeft: number of remaining notes in cf (1 is the lowest you can expect)"""
+        nodesLeft: number of remaining notes in cf (1 is the lowest you can expect)
+        
+        returns:
+        list of possible notes (music21 notes)
+        """
         #check first case
         if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
             return [tonic]
@@ -283,14 +340,14 @@ class CFProducer():
         else:
             pass #TODO
         #2) limit to range
-        weights = self.LimitToRange(weights,tonic.nameWithOctave,currentNote)
+        weights = self.LimitToRangeDynamic(weights,currentNote,lowestNote,highestNote)
         #3) step back after leap 
         if (dirJumped > 0): 
             possibleStepsAfterLeapUp = [8,9,10,11]#stepwise down
             #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
             if dirJumped > 1:
                 #find scale degree to decide between minor or major required to stay in key
-                possibleStepsAfterLeapUp.append(15,16) #add both minor and major, limitToKey already handles eliminating the wrong one(if its already 0, itll stay 0)
+                possibleStepsAfterLeapUp.extend([15,16]) #add both minor and major, limitToKey already handles eliminating the wrong one(if its already 0, itll stay 0)
             #get new weights filtred for step backs
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
@@ -298,7 +355,7 @@ class CFProducer():
 
             if dirJumped < -1:
                 #find scale degree to decide between minor or major required to stay in key
-                possibleStepsAfterLeapDown.append(8,9)
+                possibleStepsAfterLeapDown.extend([8,9])
             #get new weights
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
