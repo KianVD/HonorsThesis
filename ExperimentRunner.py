@@ -24,7 +24,7 @@ MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","
 #cantus firmus
 CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-CFcomposer.produceCF(5,"C4",verbose=False)
+CFcomposer.produceCF(8,"C4",verbose=False)
 
 #first species
 FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
@@ -34,5 +34,6 @@ with open("generated_melodies.txt") as f:
 
         #convert cf dict melody to list of music21 notes
         cf = melodyToNotes(cfdict["melody"])
-        print(cf)
+        #print(cf)
+        FScomposer.reset()
         FScomposer.produceFS(cf,verbose=False)

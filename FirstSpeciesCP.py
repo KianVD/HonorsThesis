@@ -22,6 +22,14 @@ class FSProducer(CFProducer):
         self.leaves = []
         self.tonic = None #music21 note
 
+    def reset(self):
+        """resets all variables to avoid leakage across different runs with same fsproducer instance"""
+        self.cflen = 0
+        self.root = None
+        self.tree = None
+        self.leaves = []
+        self.tonic = None
+
     def produceFS(self,cf, verbose =False):
         """given the cantus firmus, produce a first species counterpoint melody that lines up with 
         counterpoint rules and print both melodies 
@@ -426,9 +434,9 @@ def main():
     cf3 = [note.Note("C4"),note.Note("E4"),note.Note("B3"),note.Note("C4"),note.Note("G3"),note.Note("D4"),note.Note("C4")]
     cf4 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("D4"),note.Note("C4")]
     cf5 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("A4"),note.Note("G4"),note.Note("F4"),note.Note("E4"),note.Note("D4"),note.Note("C4")] #cf with possible oblique motion in fs
+    cf6 = [note.Note("C4"),note.Note("C3"),note.Note("D3"),note.Note("A3"),note.Note("G3"),note.Note("E4"),note.Note("D4"),note.Note("C4")] 
 
-
-    FScomposer.produceFS(cf5,verbose=True)
+    FScomposer.produceFS(cf6,verbose=True)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 
