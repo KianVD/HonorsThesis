@@ -44,9 +44,9 @@ class FSProducer(CFProducer):
         self.cflen =cflen
         self.tonic = cf[0]
         #insert dummy at start of cf for generating tree
-        cf.insert(0,"N/A")
+        cfwdummy = cf.insert(0,"N/A")
         #create tree
-        self.generateFSTree(self.root,cflen,cf,0,self.tonic,2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
+        self.generateFSTree(self.root,cflen,cfwdummy,0,self.tonic,2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
         #create and render tree viz
         self.tree = self.build_graphviz_tree(self.root)
         self.tree.render("tree", format="png", view=True)
