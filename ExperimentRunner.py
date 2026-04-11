@@ -34,4 +34,5 @@ with open("generated_melodies.txt") as f:
 
         #convert cf dict melody to list of music21 notes
         cf = melodyToNotes(cfdict["melody"])
+        print(cf)
         FScomposer.produceFS(cf,verbose=False)
