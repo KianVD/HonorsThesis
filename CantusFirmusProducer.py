@@ -5,6 +5,7 @@ import numpy as np
 from graphviz import Digraph
 from TreeNode import TreeNode
 import random
+import json
 
 class CFProducer():
     def __init__(self,epi,Mintervals):
@@ -111,7 +112,14 @@ class CFProducer():
     def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount,lowestNote,highestNote):
         """recursively generates tree of cantus firmuses
          
-        @param parent node  """
+        @param parent node  
+        nodesLeft
+        dirJumped
+        tonic 
+        currClimax music21 note
+        climaxCount
+        lowestNote
+        highestNote"""
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,lowestNote,highestNote)
         #add each note onto tree as node
@@ -124,6 +132,8 @@ class CFProducer():
                 #check that the climax isn't duplicated
                 if nClimaxCount > 1: 
                     continue #skip making an accepting node if it will duplicate the climax
+                if nClimax == n:
+                    continue #dont let the last note be the climax
 
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
@@ -135,6 +145,11 @@ class CFProducer():
                 newNode.parent = parent
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = self.getNextDirJumped(parent,n,dirJumped)
+                #update leap count in each node
+                if abs(nextDirJumped) == 1:
+                    newNode.leapCount = parent.leapCount + 1
+                else:
+                    newNode.leapCount = parent.leapCount
                 #get the extremes for range calc
                 newLowestNote,newHighestNote = self.computeNewExtremes(lowestNote,highestNote,n)
                 
@@ -455,7 +470,12 @@ class CFProducer():
                 for _ in range(self.n-1):
                     currnode = currnode.parent
                     notes.append(currnode.nodenote.nameWithOctave)
-                f.write(" ".join(reversed(notes)) + "\n")
+                
+                writeDict = {
+                    "melody": ",".join(reversed(notes)),
+                    "leapCount": leafNode.leapCount
+                }
+                f.write(json.dumps(writeDict) + "\n")
                 
 def main():
     #every possible interval within an octave from a note

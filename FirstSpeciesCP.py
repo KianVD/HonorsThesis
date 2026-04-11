@@ -43,7 +43,7 @@ class FSProducer(CFProducer):
         #insert dummy at start of cf for generating tree
         cf.insert(0,"N/A")
         #create tree
-        self.generateFSTree(root,cflen,cf,0,cf[1],2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic
+        self.generateFSTree(root,cflen,cf,0,cf[1],2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
         #create and render tree viz
         tree = self.build_graphviz_tree(root)
         tree.render("tree", format="png", view=True)
@@ -70,7 +70,13 @@ class FSProducer(CFProducer):
         @params
         parent parent of currnode
         nodesLeft how many nodes until first species is finished
-        cf original cantus firmus"""
+        cf original cantus firmus
+        dirJumped
+        currClimax music21 note
+        climaxCount
+        lowestNote
+        highestNote
+        tieUsed bool"""
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True,nodesLeft,lowestNote,highestNote,tieUsed)
         #add each note onto tree as node
@@ -81,6 +87,8 @@ class FSProducer(CFProducer):
             if nodesLeft <= 1: #base case, final note
                 if nClimaxCount > 1: 
                     continue #skip making an accepting node if it will duplicate the climax
+                if nClimax == n:
+                    continue #dont let the last note be the climax
 
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
@@ -93,6 +101,11 @@ class FSProducer(CFProducer):
                 parent.children.append(newNode)
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
                 nextDirJumped = self.getNextDirJumped(parent,n,dirJumped)
+
+                if abs(nextDirJumped) == 1:
+                    newNode.leapCount = parent.leapCount + 1
+                else:
+                    newNode.leapCount = parent.leapCount
 
                 newLowestNote,newHighestNote = self.computeNewExtremes(lowestNote,highestNote,n)
 
@@ -253,8 +266,8 @@ class FSProducer(CFProducer):
 
         #check first case
         if(currentFSnote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
-            #return [transtonic,transtonic.transpose("M3"),transtonic.transpose("P5")] #this is all up an octave
-            return [transtonic,transtonic.transpose("-P8"),transtonic.transpose("-m6"),transtonic.transpose("-P4")] #does tonic triad + octave
+            return [transtonic,transtonic.transpose("M3"),transtonic.transpose("P5")] #this is all up an octave( keeps distance from cf to maximize produced fs while not duplicating melodies by having both transposed triads)
+            #return [transtonic,transtonic.transpose("-P8"),transtonic.transpose("-m6"),transtonic.transpose("-P4")] #does tonic triad + octave
 
         weights=[1]*len(self.every_possible_interval)
 
@@ -289,7 +302,7 @@ class FSProducer(CFProducer):
         weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
         #5) resolve leading tone always
         weights = self.ResolveLeadingTone(weights,transtonic,currentFSnote)
-        
+
         #first species exclusive filters
         #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
         weights = self.LimitToConsonantVertical(weights,currentFSnote,nextCFnote)
