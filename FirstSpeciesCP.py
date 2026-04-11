@@ -48,15 +48,18 @@ class FSProducer(CFProducer):
         #create tree
         self.generateFSTree(self.root,cflen,cf,0,self.tonic,2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
         #create and render tree viz
-        self.tree = self.build_graphviz_tree(self.root)
-        self.tree.render("tree", format="png", view=True)
-        #traverse tree and add get random valid path
-        fs = self.traverseTreeDFS(self.root,True)
-        #add fs to fsstream
-        for nnote in fs:
-            fsstream.append(nnote)
+        if verbose:
+            self.tree = self.build_graphviz_tree(self.root)
+            self.tree.render("tree", format="png", view=True)
+
         
         if verbose:
+            
+            #traverse tree and add get random valid path
+            fs = self.traverseTreeDFS(self.root,True)
+            #add fs to fsstream
+            for nnote in fs:
+                fsstream.append(nnote)
             #create full stream
             fullpiece = stream.Stream()
             #insert first species stream
@@ -388,7 +391,7 @@ class FSProducer(CFProducer):
                     notes.append(currnode.nodenote.nameWithOctave)
 
                 #find starting note scale degree
-                scaleDegree = sc.getScaleDegreeFromPitch(notes[-1].nodenote)
+                scaleDegree = sc.getScaleDegreeFromPitch(note.Note(notes[-1]))
                 
                 writeDict = {
                     "melody": ",".join(reversed(notes)),
