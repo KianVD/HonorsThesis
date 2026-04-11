@@ -109,6 +109,9 @@ class CFProducer():
         return lowestNote, highestNote
 
     def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount,lowestNote,highestNote):
+        """recursively generates tree of cantus firmuses
+         
+        @param parent node  """
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,lowestNote,highestNote)
         #add each note onto tree as node
@@ -219,6 +222,23 @@ class CFProducer():
 
         return weights
     
+    def ResolveLeadingTone(self,weights,tonic,currNote):
+        """if the current note is the leading tone, select only m2 as a possible interval
+        
+        @param weights the probability distribution we are working with 
+        @param tonic tonic we are using
+        @param currNote the current note were on
+        
+        @return weights"""
+        sc = scale.MajorScale(tonic)
+        scaleDegree = sc.getScaleDegreeFromPitch(currNote)
+
+        if (scaleDegree == 7):
+            return weights @ self.partialIdentityMatrix([13])
+        else:
+            return weights
+
+    
     def LimitToRangeDynamic(self,weights,currNote,lowestNote,highestNote):
         """a new limit to range function that limits the entire interval of used notes to 1 and a 3rd, 
         updating the possible region based on 1.3 above lowest and 1.3 below highest
@@ -322,6 +342,8 @@ class CFProducer():
         tonic: music21 note of tonic
         major: boolean whether the cf is major or not
         nodesLeft: number of remaining notes in cf (1 is the lowest you can expect)
+        lowestNote: lowest music21 note in melody so far
+        highestNote: highest music21 note in melody so far
         
         returns:
         list of possible notes (music21 notes)
@@ -360,6 +382,8 @@ class CFProducer():
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
+        #5) resolve leading tone always
+        weights = self.ResolveLeadingTone(weights,tonic,currentNote)
 
         #convert interval weights to notes
         possibleNotes = []
@@ -436,19 +460,19 @@ class CFProducer():
 def main():
     #every possible interval within an octave from a note
     every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
-    #possible intervals from each scale degree in a major scale 
+    #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
     MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],
                       2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
                       3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
                       4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"],
                       5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8"],
                       6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
-                      7:["m2"] #leading tone #TODO add everything back to this, and make a seperate function to enforce leading tone
+                      7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6"]
                       }
     
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    cf = CFcomposer.produceCF(8,"C4",verbose=True)
+    cf = CFcomposer.produceCF(7,"C4",verbose=True)
 
 
 if __name__ == "__main__":
