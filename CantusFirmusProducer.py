@@ -173,7 +173,7 @@ class CFProducer():
             # find intervals from currentfsnote to 2 semitones above transtonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
             # regardless of minor or major scale, these are the only two notes for cadence
             #multiply those times 1, else by 0
-            cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7")] #any other 2 or 7 is out of range
+            cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7"),tonic.transpose("M9"),tonic.transpose("-m9")] #any other 2 or 7 is out of range
 
             
             #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)

@@ -1,19 +1,20 @@
-"""start thinking about how go about this"""
-from CFWithFilters import *
+"""Standalone class to produce all possible first species counterpoints on a given cantus firmus"""
 from music21 import *
 import numpy as np
 from graphviz import Digraph
 from TreeNode import TreeNode
+from CantusFirmusProducer import CFProducer 
+import random
 
-#TODO put all functions in the FSProducer class so it can call from self rather than using global var
-#TODO add P1 back to possible notes in major sclae for tie
-
+#TODO add P1 back to possible notes in major scale for tie
+#TODO allow doubling the starting and ending note
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 
 
-class FSProducer():
-    def __init__(self,epi):
+class FSProducer(CFProducer):
+    def __init__(self,epi,Mintervals):
         self.every_possible_interval = epi
+        self.major_intervals = Mintervals
         self.cflen =0
 
     def produceFS(self,cf, verbose =False):
@@ -39,7 +40,7 @@ class FSProducer():
         #insert dummy at start of cf for generating tree
         cf.insert(0,"N/A")
         #create tree
-        self.generateFSTree(root,cflen,cf,0)
+        self.generateFSTree(root,cflen,cf,0,cf[1],2,"N/A","N/A") #start with 2 climax count so melody will definitely have climax above tonic
         #create and render tree viz
         tree = self.build_graphviz_tree(root)
         tree.render("tree", format="png", view=True)
@@ -58,7 +59,7 @@ class FSProducer():
         if verbose:
             fullpiece.show()
 
-    def generateFSTree(self,parent, nodesLeft,cf,dirJumped):
+    def generateFSTree(self,parent, nodesLeft,cf,dirJumped,currClimax,climaxCount,lowestNote,highestNote):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
         final, correct paths will have a value of True as their accepting parameter, indicating the path to get 
         to that node was a valid counterpoint
@@ -67,88 +68,28 @@ class FSProducer():
         parent parent of currnode
         nodesLeft how many nodes until first species is finished
         cf original cantus firmus"""
-        #find possible notes #TODO return weights instead of notes and convert to ntoes out here, to make finding dirJumped easier
-        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True,nodesLeft)#TODO allow for minor
+        #find possible notes 
+        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True,nodesLeft,lowestNote,highestNote)
         #add each note onto tree as node
         for n in possibleNotes:
+            #get these climax variables for each possible note
+            nClimax, nClimaxCount = self.getNewClimax(n,currClimax,climaxCount)
+
             if nodesLeft <= 1: #base case, final note
+                if nClimaxCount > 1: 
+                    continue #skip making an accepting node if it will duplicate the climax
+
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
             else: #continue tree at next step
                 newNode = TreeNode(n,False)
                 parent.children.append(newNode)
                 #calculate if the chosen note n is more than a third, and update dirJumped accordingly
-                nextDirJumped = 0
-                sm = 0
-                if parent.nodenote != "N/A":
-                    sm = interval.Interval(parent.nodenote, n).semitones #make sure the first note is on the left here
-                    if sm > 4:
-                        nextDirJumped = 1
-                    elif sm < -4:
-                        nextDirJumped = -1
-                self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped)
+                nextDirJumped = self.getNextDirJumped(parent,n,dirJumped)
 
-    def partialIdentityMatrix(self,preserved_indeces):
-        """creates an identity matrix of size of every possible interval,
-        with only the specified diagonals remaining
-        
-        @param preserved_indices indices to keep"""
-        matrixWidth = len(self.every_possible_interval)
-        newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
-        for i in preserved_indeces:
-            newMatrix[i,i] = 1
-        return newMatrix
-    def partialIdentityMatrixDelete(self,deleted_indices):
-        """creates an identity matrix of size of every possible interval,
-        with only the specified diagonals as 0
-        
-        @param preserved_indices indices to delete"""
-        matrixWidth = len(self.every_possible_interval)
-        newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
-        for i in range(len(self.every_possible_interval)):
-            if i not in deleted_indices:
-                newMatrix[i,i] = 1
-        return newMatrix
-    
-    def EnsureCadence(self,weights,currentFSnote,transtonic,nodesLeft):
-        """ensures the  cadence happens
-        
-        @param weights
-        nodesleft
-        """
-        possibleIntervals = []
-        acceptableIntervals = []
-        # allow it to end on cf tonic transposed up 1 octave or 2 octaves
+                newLowestNote,newHighestNote = self.computeNewExtremes(lowestNote,highestNote,n)
 
-        if nodesLeft == 2:
-            # find intervals from currentfsnote to 2 semitones above transtonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
-            # regardless of minor or major scale, these are the only two notes for cadence
-            #multiply those times 1, else by 0
-            cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m2"),transtonic.transpose("M7")]
-
-            
-            #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)
-            for cbnote in cadenceBeginnings:
-                acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
-
-            for itvl in acceptableIntervals:
-                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                    possibleIntervals.append(itvl.semitones+12)
-            return weights @ self.partialIdentityMatrix(possibleIntervals)
-            
-
-
-        elif nodesLeft == 1:
-            #find interval from currentfsnote to transtonic 
-            #multilply that times 1 else by 0
-            acceptableIntervals = [interval.Interval(currentFSnote,transtonic),interval.Interval(currentFSnote,transtonic.transpose("P8"))]
-            for itvl in acceptableIntervals:
-                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                    possibleIntervals.append(itvl.semitones+12)
-            return weights @ self.partialIdentityMatrix(possibleIntervals)
-
-        else:
-            return weights
+                self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped,nClimax,nClimaxCount,newLowestNote,newHighestNote)
         
     def EnsureOppositeCadence(self,weights,currentFSnote, transtonic,nodesLeft,nextCFnote):
         """ensures that the first species counterpoint has the opposite cadence from the cantus firmus"""
@@ -161,7 +102,7 @@ class FSProducer():
             interval1 = interval.Interval(nextCFnote,transtonic.transpose("-P8")) #next CFnote should be second to last #this is getting cf tonic
             if interval1.semitones < 0:
                 #cf cadence is 2nd degree to tonic
-                cadenceBeginnings =[transtonic.transpose("-m2"),transtonic.transpose("M7")]
+                cadenceBeginnings =[transtonic.transpose("-m2"),transtonic.transpose("M7"),transtonic.transpose("-m9")]
                 for cbnote in cadenceBeginnings:
                     acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
                 for itvl in acceptableIntervals:
@@ -169,7 +110,7 @@ class FSProducer():
                         possibleIntervals.append(itvl.semitones+12)
             elif interval1.semitones > 0:
                 #cf cadence is 7th degree to tonic
-                cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9")]
+                cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m7")]
                 for cbnote in cadenceBeginnings:
                     acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
                 for itvl in acceptableIntervals:
@@ -277,8 +218,9 @@ class FSProducer():
                 if (newnote.pitch <= nextCFnote.pitch):
                     weights[i] *= 0
         return weights
+        
 
-    def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,transtonic,major,nodesLeft):
+    def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,transtonic,major,nodesLeft,lowestNote,highestNote):
         """returns all possible notes by eliminating intervals from currentFSnote
         
         @params
@@ -305,16 +247,28 @@ class FSProducer():
         #1) limit to key
         if (major):
             #limit intervals to intervals in scale
-            weights = LimitToMajorScale(weights,transtonic,currentFSnote) 
+            weights = self.LimitToMajorScale(weights,transtonic,currentFSnote) 
         else:
             pass #TODO
         #2) limit to range
-        weights = LimitToRange(weights,transtonic.nameWithOctave,currentFSnote)#TODO make it so all these functions accept music21 notes note strings
+        weights = self.LimitToRangeDynamic(weights,currentFSnote,lowestNote,highestNote)
         #3) step back after leap 
-        if (dirJumped > 0):
-            weights = weights @ self.partialIdentityMatrix([8,9,10,11])#stepwise down
+        if (dirJumped > 0): 
+            possibleStepsAfterLeapUp = [8,9,10,11]#stepwise down
+            #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
+            if dirJumped > 1:
+                #find scale degree to decide between minor or major required to stay in key
+                possibleStepsAfterLeapUp.extend([15,16]) #add both minor and major, limitToKey already handles eliminating the wrong one(if its already 0, itll stay 0)
+            #get new weights filtred for step backs
+            weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
-            weights = weights @ self.partialIdentityMatrix([13,14,15,16])#stepwise up
+            possibleStepsAfterLeapDown = [13,14,15,16]#stepwise up
+
+            if dirJumped < -1:
+                #find scale degree to decide between minor or major required to stay in key
+                possibleStepsAfterLeapDown.extend([8,9])
+            #get new weights
+            weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
         #first species exclusive filters
@@ -341,22 +295,6 @@ class FSProducer():
                 possibleNotes.append(currentFSnote.transpose(associatedInterval))
 
         return possibleNotes
-    def build_graphviz_tree(self,root):
-        dot = Digraph()
-
-        def dfs(node):
-
-            for child in node.children:
-                if child.accept:
-                    dot.node(str(id(child)), child.nodenote.nameWithOctave,color = 'green')
-                else:
-                    dot.node(str(id(child)), child.nodenote.nameWithOctave)
-                dot.edge(str(id(node)), str(id(child)))
-                dfs(child)
-
-        dot.node(str(id(root)), "N/A")
-        dfs(root)
-        return dot
 
     def traverseTreeDFS(self,root,randomPush=False):
         """
@@ -374,7 +312,7 @@ class FSProducer():
         stack = []
         path = [0]*self.cflen #dont add first node to path, that is dummy node
         level = -1 #uses level to set correct note in path, when iterating throuhg
-        while currnode.accept == False:#TODO there will be an error here : popping from empty stack if no melody works
+        while currnode.accept == False:#there will be an error here : popping from empty stack if no melody works
             #put all children of node in list
             children = currnode.children[:]
             #scramble order
@@ -397,16 +335,29 @@ class FSProducer():
 
 def main():
     # we will be given a list of notes representing the cantus firmus
-    cf = produceCF(7,7,1,"C4")
+    #cf = produceCF(7,7,1,"C4")
 
-    FScomposer = FSProducer(EVERY_POSSIBLE_INTERVAL)
+    #every possible interval within an octave from a note
+    every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
+    #possible intervals from each scale degree in a major scale 
+    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],
+                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
+                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"],
+                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8"],
+                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
+                      7:["m2"] #leading tone #TODO add everything back to this, and make a seperate function to enforce leading tone
+                      }
+
+    FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
 
 
     cf1 = [note.Note("F4"),note.Note("G4"),note.Note("A4"),note.Note("F4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("C5"),note.Note("A4"),note.Note("F4"),note.Note("G4"),note.Note("F4")]
     cf2 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("D4"),note.Note("C4")]
     cf3 = [note.Note("C4"),note.Note("E4"),note.Note("B3"),note.Note("C4"),note.Note("G3"),note.Note("D4"),note.Note("C4")]
+    cf4 = [note.Note("C4"),note.Note("G4"),note.Note("C4")]
 
-    FScomposer.produceFS(cf3,verbose=True)
+    FScomposer.produceFS(cf2,verbose=True)
 
 
 if __name__ == "__main__":
