@@ -6,6 +6,7 @@ from graphviz import Digraph
 from TreeNode import TreeNode
 from CantusFirmusProducer import CFProducer 
 import random
+import json
 
 #TODO allow doubling the starting and ending note
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
@@ -19,6 +20,7 @@ class FSProducer(CFProducer):
         self.root = None
         self.tree = None
         self.leaves = []
+        self.tonic = None #music21 note
 
     def produceFS(self,cf, verbose =False):
         """given the cantus firmus, produce a first species counterpoint melody that lines up with 
@@ -36,31 +38,34 @@ class FSProducer(CFProducer):
         cfstream = stream.Part(cf)
         fsstream = stream.Part()
         #start with blank node (because there are multiple possible starting notes (1  3 and 5))
-        root = TreeNode("N/A",False)
+        self.root = TreeNode("N/A",False)
         #get length of cf 
         cflen = len(cf)
         self.cflen =cflen
+        self.tonic = cf[0]
         #insert dummy at start of cf for generating tree
         cf.insert(0,"N/A")
         #create tree
-        self.generateFSTree(root,cflen,cf,0,cf[1],2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
+        self.generateFSTree(self.root,cflen,cf,0,self.tonic,2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
         #create and render tree viz
-        tree = self.build_graphviz_tree(root)
-        tree.render("tree", format="png", view=True)
+        self.tree = self.build_graphviz_tree(self.root)
+        self.tree.render("tree", format="png", view=True)
         #traverse tree and add get random valid path
-        fs = self.traverseTreeDFS(root,True)
+        fs = self.traverseTreeDFS(self.root,True)
         #add fs to fsstream
         for nnote in fs:
             fsstream.append(nnote)
         
-        #create full stream
-        fullpiece = stream.Stream()
-        #insert first species stream
-        fullpiece.insert(0,fsstream)
-        #insert cantus firmus stream
-        fullpiece.insert(0,cfstream)
         if verbose:
+            #create full stream
+            fullpiece = stream.Stream()
+            #insert first species stream
+            fullpiece.insert(0,fsstream)
+            #insert cantus firmus stream
+            fullpiece.insert(0,cfstream)
             fullpiece.show()
+
+        self.writeData("results/" + self.convertCFtoFilename(cf))
 
     def generateFSTree(self,parent, nodesLeft,cf,dirJumped,currClimax,climaxCount,lowestNote,highestNote,tieUsed):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
@@ -94,6 +99,7 @@ class FSProducer(CFProducer):
                 parent.children.append(newNode)
                 newNode.parent = parent
                 newNode.tieUsed = tieUsed
+                newNode.leapCount = parent.leapCount #update leapcount
                 self.leaves.append(newNode)
             else: #continue tree at next step
                 newNode = TreeNode(n,False)
@@ -366,6 +372,31 @@ class FSProducer(CFProducer):
         
 
         return path
+    
+    def convertCFtoFilename(self,cf):
+        return "_".join(note.nameWithOctave for note in cf)
+
+    def writeData(self,filename):
+        sc = scale.MajorScale(self.tonic)
+        #print(f"There are {len(self.leaves)} possible first species counterpoins for given cantus firmus")
+        with open(filename,"w") as f:
+            for leafNode in self.leaves:
+                notes = [leafNode.nodenote.nameWithOctave]
+                currnode = leafNode
+                for _ in range(self.cflen-1):
+                    currnode = currnode.parent
+                    notes.append(currnode.nodenote.nameWithOctave)
+
+                #find starting note scale degree
+                scaleDegree = sc.getScaleDegreeFromPitch(notes[-1].nodenote)
+                
+                writeDict = {
+                    "melody": ",".join(reversed(notes)),
+                    "leapCount": leafNode.leapCount,
+                    "tieUsed" : leafNode.tieUsed,
+                    "startingNote": scaleDegree
+                }
+                f.write(json.dumps(writeDict) + "\n")
 
 
 def main():

@@ -41,7 +41,7 @@ class CFProducer():
             for nnote in cf:
                 cfstream.append(nnote)
             cfstream.show()
-            self.writeData(f"{filename}.txt")
+        self.writeData(f"{filename}.txt")
 
         return cf
     
@@ -138,6 +138,7 @@ class CFProducer():
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
                 newNode.parent = parent
+                newNode.leapCount = parent.leapCount #update leapcount
                 self.leaves.append(newNode)
             else: #continue tree at next step
                 newNode = TreeNode(n,False)
@@ -221,8 +222,8 @@ class CFProducer():
         """sets all intervals to 0 except for those in the given scale, depending on scaledegree
         
         @param prob the probability distribution we are working with 
-        @param tonic tonic we are using
-        @param currNote the current note were on
+        @param tonic tonic we are using music21note
+        @param currNote the current note were on music21 note
         
         @return list of floats between 0 and 1, len 25"""
         #first figure out scale degree
@@ -399,6 +400,8 @@ class CFProducer():
         weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
         #5) resolve leading tone always
         weights = self.ResolveLeadingTone(weights,tonic,currentNote)
+        #disallow oblique motion no matter what in cantus firmus
+        weights = weights @ self.partialIdentityMatrixDelete([12])#12 is middle, P1
 
         #convert interval weights to notes
         possibleNotes = []
@@ -481,18 +484,18 @@ def main():
     #every possible interval within an octave from a note
     every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
     #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
-    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8"],
-                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8"],
-                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
-                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8"],
-                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8"],
-                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8"],
-                      7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6"]
+    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8","P1"],
+                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8","P1"],
+                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
+                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8","P1"],
+                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8","P1"],
+                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
+                      7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6","P1"] 
                       }
     
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    cf = CFcomposer.produceCF(7,"C4",verbose=True)
+    cf = CFcomposer.produceCF(5,"C4",verbose=True)
 
 
 if __name__ == "__main__":
