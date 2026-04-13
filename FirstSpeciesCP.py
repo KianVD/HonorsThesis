@@ -435,8 +435,9 @@ def main():
     cf4 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("D4"),note.Note("C4")]
     cf5 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("A4"),note.Note("G4"),note.Note("F4"),note.Note("E4"),note.Note("D4"),note.Note("C4")] #cf with possible oblique motion in fs
     cf6 = [note.Note("C4"),note.Note("C3"),note.Note("D3"),note.Note("A3"),note.Note("G3"),note.Note("E4"),note.Note("D4"),note.Note("C4")] 
+    cf7 = [note.Note("C4"),note.Note("D4"),note.Note("D5"),note.Note("C5")] #impossible one
 
-    FScomposer.produceFS(cf6,verbose=True)
+    FScomposer.produceFS(cf7,verbose=True)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 

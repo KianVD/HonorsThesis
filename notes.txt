@@ -70,3 +70,6 @@ does 3rd count as leap?
 
 for dynamic range, limit to 1.5 octave above lowest and 1.5 octave below highest
 octave and a third range 
+
+notes: my implementation always resolves leading tone no matter what
+i only do upper counterpoint and major
