@@ -7,6 +7,8 @@ from TreeNode import TreeNode
 from CantusFirmusProducer import CFProducer 
 import random
 import json
+import os
+from pathlib import Path
 
 #TODO allow doubling the starting and ending note
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
@@ -76,7 +78,9 @@ class FSProducer(CFProducer):
             fullpiece.insert(0,cfstream)
             fullpiece.show()
         #make sure to already have a results folder
-        self.writeData("results/" + self.convertCFtoFilename(cf[1:]))
+        if not os.path.isdir("results" + self.cflen):
+            Path("results" + self.cflen).mkdir(exist_ok=True)
+        self.writeData("results" + self.cflen + "/" + self.convertCFtoFilename(cf[1:]))
 
     def generateFSTree(self,parent, nodesLeft,cf,dirJumped,currClimax,climaxCount,lowestNote,highestNote,tieUsed):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.

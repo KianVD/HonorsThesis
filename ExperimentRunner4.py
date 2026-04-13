@@ -1,9 +1,15 @@
-"""run this program to generate all first species counterpoints on all cantus firmuses of 
-specified length, just change the length on line 29"""
+"""run this program to generate all first species counterpoints on a random sample of 
+specified size of cantus firmuses of specified length"""
 from CantusFirmusProducer import CFProducer
 from FirstSpeciesCP import FSProducer
 import json
 from music21 import *
+import random
+
+
+N = 1000 #number of cf to find all fs on
+LENGTH = 9 #length of cf (and therefore fs)
+
 
 def melodyToNotes(melody):
     melodyNotes = melody.split(",")
@@ -26,16 +32,23 @@ MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","
 #cantus firmus
 CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-CFcomposer.produceCF(8,"C4",verbose=False)
+CFcomposer.produceCF(LENGTH,"C4",verbose=False)
 
 #first species
 FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
+#read all data in
 with open("generated_melodies.txt") as f:
-    for line in f:
-        cfdict = json.loads(line.strip())
+    content = f.read()
+#split content by \n
+content = set(content.split(","))
+for i in range(N):
+    #get a random line from content and remove it
+    line = random.choice(tuple(content))
+    content.remove(line)
+    cfdict = json.loads(line.strip())
 
-        #convert cf dict melody to list of music21 notes
-        cf = melodyToNotes(cfdict["melody"])
-        #print(cf)
-        FScomposer.reset()
-        FScomposer.produceFS(cf,verbose=False)
+    #convert cf dict melody to list of music21 notes
+    cf = melodyToNotes(cfdict["melody"])
+    #print(cf)
+    FScomposer.reset()
+    FScomposer.produceFS(cf,verbose=False)

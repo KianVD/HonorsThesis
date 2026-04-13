@@ -1,5 +1,5 @@
 """This is a less memory intensive way to do ExperimentRunner2, just add up everything already in 
-results and skip to that line ingenerated melodies"""
+results and skip to that line in generated melodies"""
 
 from CantusFirmusProducer import CFProducer
 from FirstSpeciesCP import FSProducer
