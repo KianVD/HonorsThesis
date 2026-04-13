@@ -73,3 +73,5 @@ octave and a third range
 
 notes: my implementation always resolves leading tone no matter what
 i only do upper counterpoint and major
+
+need to think about testing accuracy

@@ -77,9 +77,9 @@ class FSProducer(CFProducer):
             fullpiece.insert(0,cfstream)
             fullpiece.show()
         #make sure to already have a results folder
-        if not os.path.isdir("results" + str(self.cflen)):
-            Path("results" + str(self.cflen)).mkdir(exist_ok=True)
-        self.writeData("results" + str(self.cflen) + "/" + self.convertCFtoFilename(cf[1:]))
+        #if not os.path.isdir("results"):
+            #Path("results").mkdir(exist_ok=True)
+        self.writeData("results/" + self.convertCFtoFilename(cf[1:]))
 
     def generateFSTree(self,parent, nodesLeft,cf,dirJumped,currClimax,climaxCount,lowestNote,highestNote,tieUsed):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
