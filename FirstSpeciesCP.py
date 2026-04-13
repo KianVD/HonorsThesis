@@ -10,7 +10,6 @@ import json
 import os
 from pathlib import Path
 
-#TODO allow doubling the starting and ending note
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 
 
@@ -78,9 +77,9 @@ class FSProducer(CFProducer):
             fullpiece.insert(0,cfstream)
             fullpiece.show()
         #make sure to already have a results folder
-        if not os.path.isdir("results" + self.cflen):
-            Path("results" + self.cflen).mkdir(exist_ok=True)
-        self.writeData("results" + self.cflen + "/" + self.convertCFtoFilename(cf[1:]))
+        if not os.path.isdir("results" + str(self.cflen)):
+            Path("results" + str(self.cflen)).mkdir(exist_ok=True)
+        self.writeData("results" + str(self.cflen) + "/" + self.convertCFtoFilename(cf[1:]))
 
     def generateFSTree(self,parent, nodesLeft,cf,dirJumped,currClimax,climaxCount,lowestNote,highestNote,tieUsed):
         """generate all possible first species to accompany given cantus firmus, abandoning paths as they fail.
@@ -144,8 +143,10 @@ class FSProducer(CFProducer):
             possibleIntervals = []
             #if there are two notes left, and nextcfnote is 2nd degree we need 7th for fs
             #and vice versa
-            interval1 = interval.Interval(nextCFnote,transtonic.transpose("-P8")) #next CFnote should be second to last #this is getting cf tonic
-            if interval1.semitones < 0:
+            #find if nextCFnote is second degrre or seventh
+            sc = scale.MajorScale(transtonic)
+            scaleDegree = sc.getScaleDegreeFromPitch(nextCFnote)
+            if scaleDegree == 2:
                 #cf cadence is 2nd degree to tonic
                 cadenceBeginnings =[transtonic.transpose("-m2"),transtonic.transpose("M7"),transtonic.transpose("-m9")]
                 for cbnote in cadenceBeginnings:
@@ -153,7 +154,7 @@ class FSProducer(CFProducer):
                 for itvl in acceptableIntervals:
                     if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
                         possibleIntervals.append(itvl.semitones+12)
-            elif interval1.semitones > 0:
+            elif scaleDegree == 7:
                 #cf cadence is 7th degree to tonic
                 cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m7")]
                 for cbnote in cadenceBeginnings:
@@ -439,9 +440,10 @@ def main():
     cf4 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("D4"),note.Note("C4")]
     cf5 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("A4"),note.Note("G4"),note.Note("F4"),note.Note("E4"),note.Note("D4"),note.Note("C4")] #cf with possible oblique motion in fs
     cf6 = [note.Note("C4"),note.Note("C3"),note.Note("D3"),note.Note("A3"),note.Note("G3"),note.Note("E4"),note.Note("D4"),note.Note("C4")] 
-    cf7 = [note.Note("C4"),note.Note("D4"),note.Note("D5"),note.Note("C5")] #impossible one
+    cf7 = [note.Note("C4"),note.Note("D4"),note.Note("D5"),note.Note("C5")] #impossible oned
+    cf8 = [note.Note("C4"),note.Note("F4"),note.Note("D4"),note.Note("A4"),note.Note("G4"),note.Note("D5"),note.Note("B4"),note.Note("C5")] #impossible one?
 
-    FScomposer.produceFS(cf7,verbose=True)
+    FScomposer.produceFS(cf8,verbose=True)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 

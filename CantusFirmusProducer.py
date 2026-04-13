@@ -242,8 +242,8 @@ class CFProducer():
         """if the current note is the leading tone, select only m2 as a possible interval
         
         @param weights the probability distribution we are working with 
-        @param tonic tonic we are using
-        @param currNote the current note were on
+        @param tonic tonic we are using music21 note
+        @param currNote the current note were on music21 note
         
         @return weights"""
         sc = scale.MajorScale(tonic)
@@ -495,7 +495,7 @@ def main():
     
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    cf = CFcomposer.produceCF(5,"C4",verbose=True)
+    cf = CFcomposer.produceCF(8,"C4",verbose=True)
 
 
 if __name__ == "__main__":
