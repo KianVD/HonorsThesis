@@ -6,12 +6,16 @@ import json
 from music21 import *
 from wakepy import keep
 
+LENGTH = 8
+
 def melodyToNotes(melody):
     melodyNotes = melody.split(",")
     returnNotes = []
     for notename in melodyNotes:
         returnNotes.append(note.Note(notename))
     return returnNotes
+
+print(f"Collecting data for all cantus firmus of length {LENGTH}")
 
 with keep.running():
     #every possible interval within an octave from a note
@@ -28,11 +32,11 @@ with keep.running():
     #cantus firmus
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    CFcomposer.produceCF(8,"C4",verbose=False)
+    CFcomposer.produceCF(LENGTH,"C4",verbose=False)
 
     #first species
     FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
-    with open("generated_melodies.txt") as f:
+    with open("generated_melodies.txt","r") as f:
         for line in f:
             cfdict = json.loads(line.strip())
 

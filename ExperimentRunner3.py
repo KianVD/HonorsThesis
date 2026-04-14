@@ -1,12 +1,13 @@
-"""This is a less memory intensive way to do ExperimentRunner2, just add up everything already in 
-results and skip to that line in generated melodies"""
+"""Run this experiment to not generate new cf list but just use one already generated
+this just add up everything already in results and skip to that line in generated melodies,
+ so you can start where you left off if you ran 1 but closed it"""
 
-from CantusFirmusProducer import CFProducer
 from FirstSpeciesCP import FSProducer
 import json
 from music21 import *
 from pathlib import Path
 from wakepy import keep
+
 
 def melodyToNotes(melody):
     melodyNotes = melody.split(",")
@@ -14,6 +15,8 @@ def melodyToNotes(melody):
     for notename in melodyNotes:
         returnNotes.append(note.Note(notename))
     return returnNotes
+
+print("Collecting data for cantus firmuses in generated_melodies.txt")
 
 with keep.running(): #to keep cpu from turning off for running overnight
     #every possible interval within an octave from a note
@@ -33,7 +36,7 @@ with keep.running(): #to keep cpu from turning off for running overnight
     #first species
     FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
     currLine = 0
-    with open("generated_melodies.txt") as f:
+    with open("generated_melodies.txt","r") as f:
         for line in f:
             
             currLine += 1

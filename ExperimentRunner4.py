@@ -9,6 +9,7 @@ from wakepy import keep
 
 N = 1000 #number of cf to find all fs on
 LENGTH = 9 #length of cf (and therefore fs)
+SEED = 0
 
 
 def melodyToNotes(melody):
@@ -17,6 +18,10 @@ def melodyToNotes(melody):
     for notename in melodyNotes:
         returnNotes.append(note.Note(notename))
     return returnNotes
+
+random.seed(SEED)
+
+print(f"Collecting data for {N} random cantus firmus of length {LENGTH} on seed {SEED}")
 
 with keep.running():
     #every possible interval within an octave from a note
@@ -35,21 +40,27 @@ with keep.running():
 
     CFcomposer.produceCF(LENGTH,"C4",verbose=False)
 
-    #first species
-    FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
+    #run CFproducer and make a new file with only a random sample from that, then run the experiment on that 
     #read all data in
-    with open("generated_melodies.txt") as f:
+    with open("generated_melodies.txt","r") as f:
         content = f.read()
     #split content by \n
-    content = set(content.split(","))
-    for i in range(N):
-        #get a random line from content and remove it
-        line = random.choice(tuple(content))
-        content.remove(line)
-        cfdict = json.loads(line.strip())
+    content = set(content.split("\n"))
+    with open("generated_melodies.txt","w") as f:
+        for i in range(N):
+            #get a random line from content and remove it
+            line = random.choice(tuple(content))
+            content.remove(line)
+            f.write(line + "\n")
 
-        #convert cf dict melody to list of music21 notes
-        cf = melodyToNotes(cfdict["melody"])
-        #print(cf)
-        FScomposer.reset()
-        FScomposer.produceFS(cf,verbose=False)
+    #first species
+    FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
+    with open("generated_melodies.txt","r") as f:
+        for line in f:
+            cfdict = json.loads(line.strip())
+
+            #convert cf dict melody to list of music21 notes
+            cf = melodyToNotes(cfdict["melody"])
+            #print(cf)
+            FScomposer.reset()
+            FScomposer.produceFS(cf,verbose=False)
