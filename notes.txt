@@ -75,3 +75,10 @@ notes: my implementation always resolves leading tone no matter what
 i only do upper counterpoint and major
 
 need to think about testing accuracy
+discuss what i need to write for research paper
+try google colab and linux lab
+
+TODO Apr 15
+take out 3rd for step wise motion
+climax can be beginning and end
+take out resolve leading tone for first species x

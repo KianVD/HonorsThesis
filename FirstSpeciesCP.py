@@ -305,7 +305,7 @@ class FSProducer(CFProducer):
         weights = self.LimitToRangeDynamic(weights,currentFSnote,lowestNote,highestNote)
         #3) step back after leap 
         if (dirJumped > 0): 
-            possibleStepsAfterLeapUp = [8,9,10,11]#stepwise down
+            possibleStepsAfterLeapUp = [10,11]#stepwise down #TWOS ONLY
             #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
             if dirJumped > 1:
                 #find scale degree to decide between minor or major required to stay in key
@@ -313,7 +313,7 @@ class FSProducer(CFProducer):
             #get new weights filtred for step backs
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
-            possibleStepsAfterLeapDown = [13,14,15,16]#stepwise up
+            possibleStepsAfterLeapDown = [13,14]#stepwise up #ONLY TWOS
 
             if dirJumped < -1:
                 #find scale degree to decide between minor or major required to stay in key
@@ -322,8 +322,8 @@ class FSProducer(CFProducer):
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
         weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
-        #5) resolve leading tone always
-        weights = self.ResolveLeadingTone(weights,transtonic,currentFSnote)
+        
+        #DO NOT have to resolve leading tone for first species-- weights = self.ResolveLeadingTone(weights,transtonic,currentFSnote)
 
         #first species exclusive filters
         #1) only consonant vertical intervals NO second, fourth, seventh, aug, dim, tritone
@@ -442,8 +442,9 @@ def main():
     cf6 = [note.Note("C4"),note.Note("C3"),note.Note("D3"),note.Note("A3"),note.Note("G3"),note.Note("E4"),note.Note("D4"),note.Note("C4")] 
     cf7 = [note.Note("C4"),note.Note("D4"),note.Note("D5"),note.Note("C5")] #impossible oned
     cf8 = [note.Note("C4"),note.Note("F4"),note.Note("D4"),note.Note("A4"),note.Note("G4"),note.Note("D5"),note.Note("B4"),note.Note("C5")] #impossible one?
+    cf9 = [note.Note("C4"),note.Note("G4"),note.Note("F4"),note.Note("G4"),note.Note("C5"),note.Note("A4"),note.Note("D5"),note.Note("C5")]
 
-    FScomposer.produceFS(cf8,verbose=True)
+    FScomposer.produceFS(cf9,verbose=True)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 

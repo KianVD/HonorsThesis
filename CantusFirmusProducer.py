@@ -56,17 +56,22 @@ class CFProducer():
         return currClimax,climaxCount
     
     def getNextDirJumped(self,parent,nextNote,currDirJumped):
-        """returns nextDirJumped for a given nextNote
+        """returns nextDirJumped for a given nextNote, ran on each possible note at each step
         
         dirJumped: the direction of a leap made to get to current note (accounts for arpeggios)
         dirJumped key is as follows:
-        0 is no jump
+        0 is no jump to next note
         1 is jump up besides p4
         -1 is jump down besides p4
         2 is perfect fourth up
         -2 is perfect fourth down
         3 is perfect fourth then a third up
         -3 is perfect fourth then a third down
+
+        @param 
+        parent: current note node
+        nextNote: the next note of melody, music21 note
+        currDirJumped: the dirJumped var for the note before current note to current note
         
         returns: nextDirJumped
         """
@@ -89,9 +94,9 @@ class CFProducer():
                 nextDirJumped = 3
             elif currDirJumped == -2 and sm in [-3,-4]: #down case
                 nextDirJumped = -3
-            elif currDirJumped == 3: #4:3:3 arpeggio has just transpired, need step down
+            elif currDirJumped == 3 and sm in [3,4]: #4:3:3 arpeggio has just transpired, need step down
                 nextDirJumped = 1
-            elif currDirJumped == -3: #down case (step up)
+            elif currDirJumped == -3 and sm in [-3,-4]: #down case (step up)
                 nextDirJumped = -1
 
         return nextDirJumped
@@ -381,7 +386,7 @@ class CFProducer():
         weights = self.LimitToRangeDynamic(weights,currentNote,lowestNote,highestNote)
         #3) step back after leap 
         if (dirJumped > 0): 
-            possibleStepsAfterLeapUp = [8,9,10,11]#stepwise down
+            possibleStepsAfterLeapUp = [10,11]#stepwise down #ONLY TWOS
             #if dirJumped is 1, only allow step down, if dirJumped is 2 allow step down or 3rd up (minor or major depending on scale degree), same for dirJumped 3
             if dirJumped > 1:
                 #find scale degree to decide between minor or major required to stay in key
@@ -389,7 +394,7 @@ class CFProducer():
             #get new weights filtred for step backs
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapUp)
         elif (dirJumped < 0):
-            possibleStepsAfterLeapDown = [13,14,15,16]#stepwise up
+            possibleStepsAfterLeapDown = [13,14]#stepwise up #ONLY TWOS
 
             if dirJumped < -1:
                 #find scale degree to decide between minor or major required to stay in key
