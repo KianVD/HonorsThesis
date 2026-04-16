@@ -319,7 +319,7 @@ class FSProducer(CFProducer):
             #get new weights
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
-        weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft)
+        weights = self.EnsureCadence(weights,currentFSnote,transtonic,nodesLeft,True) #ok to end on transposed tonic
         
         #DO NOT have to resolve leading tone for first species-- weights = self.ResolveLeadingTone(weights,transtonic,currentFSnote)
 

@@ -27,7 +27,7 @@ class CFProducer():
         #init start of tree
         self.root = TreeNode("N/A",False)
 
-        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),1,"N/A","N/A")
+        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2,"N/A","N/A") #start climaxCount at 2 since tonic cant be climax anyways
 
         #create and render tree viz
         self.tree = self.build_graphviz_tree(self.root)
@@ -181,11 +181,14 @@ class CFProducer():
                 newMatrix[i,i] = 1
         return newMatrix
     
-    def EnsureCadence(self,weights,currentNote,tonic,nodesLeft):
+    def EnsureCadence(self,weights,currentNote,tonic,nodesLeft,transposeOk):
         """ensures the  cadence happens
         
         @param weights
-        nodesleft
+        currentNote
+        tonic
+        nodesLeft
+        transposeOk: bool, whether landing on the tonic transposed up or down an octave is ok
         """
         possibleIntervals = []
         acceptableIntervals = []
@@ -195,7 +198,10 @@ class CFProducer():
             # find intervals from currentfsnote to 2 semitones above transtonic and 1 semitone below (scale degree 2 and scale degree 7 major) 
             # regardless of minor or major scale, these are the only two notes for cadence
             #multiply those times 1, else by 0
-            cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7"),tonic.transpose("M9"),tonic.transpose("-m9")] #any other 2 or 7 is out of range
+            if transposeOk:
+                cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7"),tonic.transpose("M9"),tonic.transpose("-m9")] #any other 2 or 7 is out of range
+            else:
+                cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2")] #any other 2 or 7 is out of range
 
             
             #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)
@@ -212,7 +218,10 @@ class CFProducer():
         elif nodesLeft == 1:
             #find interval from currentfsnote to transtonic 
             #multilply that times 1 else by 0
-            acceptableIntervals = [interval.Interval(currentNote,tonic),interval.Interval(currentNote,tonic.transpose("P8")),interval.Interval(currentNote,tonic.transpose("-P8"))]
+            if transposeOk:
+                acceptableIntervals = [interval.Interval(currentNote,tonic),interval.Interval(currentNote,tonic.transpose("P8")),interval.Interval(currentNote,tonic.transpose("-P8"))]
+            else:
+                acceptableIntervals = [interval.Interval(currentNote,tonic)]
             for itvl in acceptableIntervals:
                 if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
                     possibleIntervals.append(itvl.semitones+12)
@@ -400,7 +409,7 @@ class CFProducer():
             #get new weights
             weights = weights @ self.partialIdentityMatrix(possibleStepsAfterLeapDown)
         #4) end in cadence
-        weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft)
+        weights = self.EnsureCadence(weights,currentNote,tonic,nodesLeft,False) #for cantus firmus, transpose not Ok: must end on untransposed tonic
         #5) resolve leading tone always
         weights = self.ResolveLeadingTone(weights,tonic,currentNote)
         #disallow oblique motion no matter what in cantus firmus

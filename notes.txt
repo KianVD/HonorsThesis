@@ -73,6 +73,7 @@ octave and a third range
 
 notes: my implementation always resolves leading tone no matter what
 i only do upper counterpoint and major
+only starts on transposed tonic then third and fifth above that, this captures all cf shapes without repeats (some of them could be transposed down an octave and still work, but are not new melodies)
 
 need to think about testing accuracy
 discuss what i need to write for research paper

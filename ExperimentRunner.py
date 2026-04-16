@@ -1,5 +1,5 @@
 """run this program to generate all first species counterpoints on all cantus firmuses of 
-specified length, just change the length on line 29"""
+specified length, just change the length"""
 from CantusFirmusProducer import CFProducer
 from FirstSpeciesCP import FSProducer
 import json
