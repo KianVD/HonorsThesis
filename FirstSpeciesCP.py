@@ -55,7 +55,7 @@ class FSProducer(CFProducer):
         #insert dummy at start of cf for generating tree
         cf.insert(0,"N/A")
         #create tree
-        self.generateFSTree(self.root,cflen,cf,0,self.tonic,2,"N/A","N/A",False) #start with 2 climax count so melody will definitely have climax above tonic (first note will definitely not be the climax)
+        self.generateFSTree(self.root,cflen,cf,0,self.tonic,1,"N/A","N/A",False) 
         #create and render tree viz
         if verbose:
             self.tree = self.build_graphviz_tree(self.root)
@@ -106,8 +106,6 @@ class FSProducer(CFProducer):
             if nodesLeft <= 1: #base case, final note
                 if nClimaxCount > 1: 
                     continue #skip making an accepting node if it will duplicate the climax
-                if nClimax == n:
-                    continue #dont let the last note be the climax
 
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)

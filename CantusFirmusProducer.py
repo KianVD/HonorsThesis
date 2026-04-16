@@ -27,7 +27,7 @@ class CFProducer():
         #init start of tree
         self.root = TreeNode("N/A",False)
 
-        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2,"N/A","N/A")
+        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),1,"N/A","N/A")
 
         #create and render tree viz
         self.tree = self.build_graphviz_tree(self.root)
@@ -137,8 +137,6 @@ class CFProducer():
                 #check that the climax isn't duplicated
                 if nClimaxCount > 1: 
                     continue #skip making an accepting node if it will duplicate the climax
-                if nClimax == n:
-                    continue #dont let the last note be the climax
 
                 newNode = TreeNode(n,True)
                 parent.children.append(newNode)
