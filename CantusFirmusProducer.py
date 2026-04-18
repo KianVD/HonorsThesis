@@ -29,9 +29,10 @@ class CFProducer():
 
         self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2,"N/A","N/A") #start climaxCount at 2 since tonic cant be climax anyways
 
-        #create and render tree viz
-        self.tree = self.build_graphviz_tree(self.root)
+        
         if verbose:
+            #create and render tree viz
+            self.tree = self.build_graphviz_tree(self.root)
             self.tree.render("tree", format="png", view=True)
 
         cf = self.traverseTreeDFS(self.root,True)
