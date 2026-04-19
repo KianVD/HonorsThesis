@@ -63,59 +63,65 @@ class DataAnalyzer():
 
 
         #loop through lengths of leaps (first all lengths, then 0,1,2,etc):
-        currLeapNumber = -1
+        leap_counts = set(cfdict["leapCount"] for cfdict in cfdicts)
         #loop through -1,0,up to the max possible leaps (just put length for now, well over max always)
-        for _ in range(length):
+        for currLeapNumber in [-1] + sorted(leap_counts):
             cfcount = 0
-            fscounts = []
-            totalfscount = 0
+            fscountData = [[],[],[],[],[],[]]
+            totalfscount = [0] * 6#0 is all, 1 is 1, 2 is 3, 3 is 5, 4 is tie, 5 is no tie
             for cfdict in cfdicts:
-                if currLeapNumber == -1:
+                #consider all leapcounts
+                if currLeapNumber == -1 or cfdict["leapCount"] == currLeapNumber: #only accumulate data if currLeapNumber is -1 (accumulate all data) or leapCount is equal to current leapnum (gets subset of data)
                     #accumulate data to find avg and var
                     cfcount += 1
                     with open(results_folder + "/" + self.melodyToName(cfdict["melody"]),"r") as f: #open fs file for specific cf
-                        fscount = 0
+                        fscount = [0] * 6
                         for line in f:
-                            fscount += 1
-                            fsdict = json.loads(line.strip()) #TODO get the rest of data
-                        fscounts.append(fscount)#append count of fs for this cf to list of fscounts
-                        totalfscount += fscount
+                            fscount[0] += 1
+                            fsdict = json.loads(line.strip())
+                            if fsdict["startingNote"] == 1:
+                                fscount[1] += 1
+                            elif fsdict["startingNote"] == 3:
+                                fscount[2] += 1
+                            elif fsdict["startingNote"] == 5:
+                                fscount[3] += 1
+                            if fsdict["tieUsed"] == True:
+                                fscount[4] += 1
+                            elif fsdict["tieUsed"] == False:
+                                fscount[5] += 1
+                            else:
+                                print("json bool parsing error")
+                        for i in range(len(fscount)):
+                            fscountData[i].append(fscount[i])#append count of fs for this cf to list of fscounts
+                            totalfscount[i] += fscount[i] #append fscounts
 
-                    
-                else:
-                    #compare currLeapnum
-                    if cfdict["leapCount"] == currLeapNumber:
-                        #accumulate data to find avg and var
-                        cfcount += 1
-                        with open(results_folder + "/" + self.melodyToName(cfdict["melody"]),"r") as f: #open fs file for specific cf
-                            fscount = 0
-                            for line in f:
-                                fscount += 1
-                                fsdict = json.loads(line.strip()) #TODO get the rest of data
-                            fscounts.append(fscount)#append count of fs for this cf to list of fscounts
-                            totalfscount += fscount        
+            #get leapCount value for writing to file
             if currLeapNumber == -1:
                 leapCount = "N/A"
             else:
                 leapCount = str(currLeapNumber)
-            #get all data into list and add to data
-            #if there were no cf for this leap count then just skip writing that row
-            if cfcount != 0:
-                avgfs = totalfscount/cfcount
+
+            avgfs = [0]*6
+            varfs = [0]*6
+            denom = cfcount #popoulation variance
+            if not pop:#sample variance
+                denom -= 1
+            #get avg and var for each subset
+            for i in range(len(totalfscount)):
+                avgfs[i] = totalfscount[i]/cfcount
                 #find variance with avgfs now
                 numerator_sum = 0
-                for fscount in fscounts:
-                    se =  (fscount - avgfs)** 2
+                for fscount in fscountData[i]:
+                    se =  (fscount - avgfs[i])** 2
                     numerator_sum += se
-                denom = cfcount #popoulation variance
-                if not pop:#sample variance
-                    denom -= 1
-                varfs = numerator_sum/ denom
 
+                varfs[i] = numerator_sum/ denom
 
-                out_data.append([length,leapCount,cfcount,avgfs,varfs,math.sqrt(varfs)])
-            #increment leap
-            currLeapNumber += 1
+            out_row = [length,leapCount,cfcount]
+            for i in range(len(totalfscount)):
+                out_row.extend([avgfs[i],varfs[i],math.sqrt(varfs[i])])
+
+            out_data.append(out_row)
 
 
         with open(out,"w",newline='') as f:
@@ -123,7 +129,7 @@ class DataAnalyzer():
             writer.writerows(out_data)
 
     def prepare(self,cf_melodies,results_folder,out):
-        """prepare cf data in csv to be analyzed in excel (for boxplot?)"""
+        """prepare cf data in csv to be analyzed in excel (for boxplot)"""
         cfdicts = []
         length = 0
         out_data = [["cfname","leapCount","fscount"]]
@@ -155,9 +161,9 @@ class DataAnalyzer():
 def main():
 
     #needs the file from generating all cf and the folder for generating all fs on the cfs
-    cf_melodies = "generated_melodies8.txt" #every melody in this file must have a corresponding file in results folder for all the fs on that melody
-    results_folder = "results8"
-    out = "analysisResults.csv"
+    cf_melodies = "generated_melodies10.txt" #every melody in this file must have a corresponding file in results folder for all the fs on that melody
+    results_folder = "results10"
+    out = "analysisResults10.csv"
     
     da = DataAnalyzer()
     da.analyze(cf_melodies,results_folder,out,True)#True for population, False for sample
