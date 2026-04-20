@@ -207,7 +207,7 @@ class FSProducer(CFProducer):
         for i in range(len(weights)):
             if weights[i] != 0: #theres no point calculating it on stuff thats already 0
                 #if the fs interval is not by step ( just 2 now)
-                if(i not in [8,9,10,11,13,14,15,16]):
+                if(i not in [10,11,13,14]):
                     #and if the vertical interval between that resulting note and next cfnote is perfect,
                     vertinterval = (currentFSnote + self.every_possible_interval[i]) - nextCFnote
                     if ((abs(vertinterval)%12) in [7,0]):
