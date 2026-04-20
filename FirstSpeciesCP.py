@@ -398,24 +398,26 @@ class FSProducer(CFProducer):
 
     def writeData(self,filename):
         #print(f"There are {len(self.leaves)} possible first species counterpoins for given cantus firmus")
-        with open(filename,"w") as f:
-            for leafNode in self.leaves:
-                notes = [note.Note(leafNode.nodenote).nameWithOctave]
-                currnode = leafNode
-                for _ in range(self.cflen-1):
-                    currnode = currnode.parent
-                    notes.append(note.Note(currnode.nodenote).nameWithOctave)
+        lines = []
+        for leafNode in self.leaves:
+            notes = [note.Note(leafNode.nodenote).nameWithOctave]
+            currnode = leafNode
+            for _ in range(self.cflen-1):
+                currnode = currnode.parent
+                notes.append(note.Note(currnode.nodenote).nameWithOctave)
 
-                #find starting note scale degree
-                scaleDegree = self.get_scale_degree_major(note.Note(notes[-1]).pitch.midi,self.tonic)
-                
-                writeDict = {
-                    "melody": ",".join(reversed(notes)),
-                    "leapCount": leafNode.leapCount,
-                    "tieUsed" : leafNode.tieUsed,
-                    "startingNote": scaleDegree
+            #find starting note scale degree
+            scaleDegree = self.get_scale_degree_major(note.Note(notes[-1]).pitch.midi,self.tonic)
+            
+            writeDict = {
+                "melody": ",".join(reversed(notes)),
+                "leapCount": leafNode.leapCount,
+                "tieUsed" : leafNode.tieUsed,
+                "startingNote": scaleDegree
                 }
-                f.write(json.dumps(writeDict) + "\n")
+            lines.append(json.dumps(writeDict))
+        with open(filename,"w") as f:
+            f.write("\n".join(lines))
 
 
 def main():

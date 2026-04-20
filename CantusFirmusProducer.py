@@ -440,19 +440,22 @@ class CFProducer():
     
     def writeData(self,filename):
         print(f"There are {len(self.leaves)} possible cantus firmuses of length {self.n}")
+        lines = []
+        
+        for leafNode in self.leaves:
+            notes = [note.Note(leafNode.nodenote).nameWithOctave]
+            currnode = leafNode
+            for _ in range(self.n-1):
+                currnode = currnode.parent
+                notes.append(note.Note(currnode.nodenote).nameWithOctave)
+            
+            writeDict = {
+                "melody": ",".join(reversed(notes)),
+                "leapCount": leafNode.leapCount
+            }
+            lines.append(json.dumps(writeDict))
         with open(filename,"w") as f:
-            for leafNode in self.leaves:
-                notes = [note.Note(leafNode.nodenote).nameWithOctave]
-                currnode = leafNode
-                for _ in range(self.n-1):
-                    currnode = currnode.parent
-                    notes.append(note.Note(currnode.nodenote).nameWithOctave)
-                
-                writeDict = {
-                    "melody": ",".join(reversed(notes)),
-                    "leapCount": leafNode.leapCount
-                }
-                f.write(json.dumps(writeDict) + "\n")
+            f.write("\n".join(lines))
                 
 def main():
     #every possible interval within an octave from a note

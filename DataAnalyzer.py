@@ -57,8 +57,8 @@ class DataAnalyzer():
             for line in f:
                 cfdict = json.loads(line.strip())
                 cfdicts.append(cfdict)
-                if length == 0: #set length
-                    length = len(cfdict["melody"].split(","))
+        #set length
+        length = len(cfdicts[0]["melody"].split(","))
             
 
 
@@ -131,15 +131,12 @@ class DataAnalyzer():
     def prepare(self,cf_melodies,results_folder,out):
         """prepare cf data in csv to be analyzed in excel (for boxplot)"""
         cfdicts = []
-        length = 0
         out_data = [["cfname","leapCount","fscount"]]
         with open(cf_melodies, "r") as f:
             #get dicts into a list
             for line in f:
                 cfdict = json.loads(line.strip())
                 cfdicts.append(cfdict)
-                if length == 0: #set length
-                    length = len(cfdict["melody"].split(","))
 
 
         for cfdict in cfdicts:
