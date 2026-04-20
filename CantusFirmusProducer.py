@@ -27,7 +27,7 @@ class CFProducer():
         #init start of tree
         self.root = TreeNode("N/A",False)
 
-        self.generateTree(self.root,self.n,0,note.Note(tonic),note.Note(tonic),2,"N/A","N/A") #start climaxCount at 2 since tonic cant be climax anyways
+        self.generateTree(self.root,self.n,0,tonic,tonic,2,"N/A","N/A") #start climaxCount at 2 since tonic cant be climax anyways
 
         
         if verbose:
@@ -35,23 +35,22 @@ class CFProducer():
             self.tree = self.build_graphviz_tree(self.root)
             self.tree.render("tree", format="png", view=True)
 
-        cf = self.traverseTreeDFS(self.root,True)
-
+        
         if verbose:
+            cf = self.traverseTreeDFS(self.root,True)
+
             cfstream = stream.Stream()
             for nnote in cf:
-                cfstream.append(nnote)
+                cfstream.append(note.Note(nnote))
             cfstream.show()
         self.writeData(f"{filename}.txt")
-
-        return cf
     
     def getNewClimax(self,newNote,currClimax,climaxCount):
         #check if climax is duplicated for each note
-        if newNote.pitch > currClimax.pitch:
+        if newNote > currClimax:
             currClimax = newNote
             climaxCount = 1
-        elif newNote.pitch == currClimax.pitch:
+        elif newNote == currClimax:
             climaxCount += 1
 
         return currClimax,climaxCount
@@ -71,7 +70,7 @@ class CFProducer():
 
         @param 
         parent: current note node
-        nextNote: the next note of melody, music21 note
+        nextNote: the next note of melody, midi pitch
         currDirJumped: the dirJumped var for the note before current note to current note
         
         returns: nextDirJumped
@@ -79,7 +78,7 @@ class CFProducer():
         nextDirJumped = 0
         sm = 0
         if parent.nodenote != "N/A":
-            sm = interval.Interval(parent.nodenote, nextNote).semitones #make sure the first note is on the left here
+            sm = nextNote - parent.nodenote
             if sm > 4: #leap up
                 nextDirJumped = 1
                 if sm == 5:
@@ -108,9 +107,9 @@ class CFProducer():
             lowestNote = newNote
             highestNote = newNote
 
-        if lowestNote.pitch > newNote.pitch:
+        if lowestNote > newNote:
             lowestNote = newNote
-        if highestNote.pitch < newNote.pitch:
+        if highestNote < newNote:
             highestNote = newNote
 
         return lowestNote, highestNote
@@ -121,8 +120,8 @@ class CFProducer():
         @param parent node  
         nodesLeft
         dirJumped
-        tonic 
-        currClimax music21 note
+        tonic midi pitch num
+        currClimax midi pitch num
         climaxCount
         lowestNote
         highestNote"""
@@ -200,18 +199,18 @@ class CFProducer():
             # regardless of minor or major scale, these are the only two notes for cadence
             #multiply those times 1, else by 0
             if transposeOk:
-                cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2"),tonic.transpose("-m7"),tonic.transpose("M7"),tonic.transpose("M9"),tonic.transpose("-m9")] #any other 2 or 7 is out of range
+                cadenceBeginnings = [tonic + 2,tonic - 1,tonic - 10,tonic + 11,tonic + 12 + 2,tonic - 12 - 1] #any other 2 or 7 is out of range
             else:
-                cadenceBeginnings = [tonic.transpose("M2"),tonic.transpose("-m2")] #any other 2 or 7 is out of range
+                cadenceBeginnings = [tonic + 2,tonic - 1] #any other 2 or 7 is out of range
 
             
             #get intervals from current note to 4 possible notes right before tonic (transtonic and transtonic transposed 1 octave higher)
             for cbnote in cadenceBeginnings:
-                acceptableIntervals.append(interval.Interval(currentNote,cbnote))
+                acceptableIntervals.append(cbnote - currentNote)
 
             for itvl in acceptableIntervals:
-                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                    possibleIntervals.append(itvl.semitones+12)
+                if abs(itvl) <= 12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                    possibleIntervals.append(itvl+12)
             return weights @ self.partialIdentityMatrix(possibleIntervals)
             
 
@@ -220,16 +219,37 @@ class CFProducer():
             #find interval from currentfsnote to transtonic 
             #multilply that times 1 else by 0
             if transposeOk:
-                acceptableIntervals = [interval.Interval(currentNote,tonic),interval.Interval(currentNote,tonic.transpose("P8")),interval.Interval(currentNote,tonic.transpose("-P8"))]
+                acceptableIntervals = [tonic - currentNote,tonic +12 - currentNote,tonic - 12 - currentNote]
             else:
-                acceptableIntervals = [interval.Interval(currentNote,tonic)]
+                acceptableIntervals = [tonic - currentNote]
             for itvl in acceptableIntervals:
-                if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                    possibleIntervals.append(itvl.semitones+12)
+                if abs(itvl) <= 12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                    possibleIntervals.append(itvl+12)
             return weights @ self.partialIdentityMatrix(possibleIntervals)
 
         else:
             return weights
+        
+    def get_scale_degree_major(self,pitch, tonic):
+        """
+        pitch: int (MIDI number)
+        tonic: int (MIDI number)
+
+        returns: 1-7 if in major scale, else None
+        """
+        semitone = (pitch - tonic) % 12
+
+        mapping = {
+            0: 1,
+            2: 2,
+            4: 3,
+            5: 4,
+            7: 5,
+            9: 6,
+            11: 7
+        }
+
+        return mapping.get(semitone, None)
         
     def LimitToMajorScale(self,weights,tonic,currNote):
         """sets all intervals to 0 except for those in the given scale, depending on scaledegree
@@ -240,8 +260,7 @@ class CFProducer():
         
         @return list of floats between 0 and 1, len 25"""
         #first figure out scale degree
-        sc = scale.MajorScale(tonic)
-        scaleDegree = sc.getScaleDegreeFromPitch(currNote)
+        scaleDegree = self.get_scale_degree_major(currNote,tonic)
 
         #use dictionary for scale
         AllowedIntervals = self.major_intervals[scaleDegree]
@@ -259,8 +278,7 @@ class CFProducer():
         @param currNote the current note were on music21 note
         
         @return weights"""
-        sc = scale.MajorScale(tonic)
-        scaleDegree = sc.getScaleDegreeFromPitch(currNote)
+        scaleDegree = self.get_scale_degree_major(currNote,tonic)
 
         if (scaleDegree == 7):
             return weights @ self.partialIdentityMatrix([13])
@@ -283,84 +301,25 @@ class CFProducer():
         #compute the bounds and update weights as such---
         unallowedIntervals = []
         #find highest allowed note which is 1.3 above lowest note
-        highestValidNote = lowestNote.transpose("M10") #M10 is octave plus major 3rd, max range for cf we decided on
+        highestValidNote = lowestNote + 12 + 4 #M10 is octave plus major 3rd, max range for cf we decided on
         #find interval from currNote to highest allowed note
-        currToHighItvl = interval.Interval(currNote,highestValidNote)
+        currToHighItvl = highestValidNote - currNote
         #find that interval in epi
-        if abs(currToHighItvl.semitones) <= 12 and abs(currToHighItvl.semitones) >= -12:
-            epi_index = currToHighItvl.semitones+12
+        if abs(currToHighItvl) <= 12:
+            epi_index = currToHighItvl+12
             #add anything above that interval to unallowed intervals
-            
             unallowedIntervals.extend(range(epi_index+1,25))#stop exclusive
         #now same for  lowest allowed note
-        lowestValidNote = highestNote.transpose("-M10")
+        lowestValidNote = highestNote - 12 -4
 
-        currToLowItvl = interval.Interval(currNote,lowestValidNote)
+        currToLowItvl = lowestValidNote - currNote
 
-        if abs(currToLowItvl.semitones) <= 12 and abs(currToLowItvl.semitones) >= -12:
-            epi_index = currToLowItvl.semitones+12
+        if abs(currToLowItvl) <= 12:
+            epi_index = currToLowItvl+12
             #add anything below that interval to unallowed intervals
             unallowedIntervals.extend(range(epi_index)) #start inclusive
 
         return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
-
-        
-
-
-    def LimitToRange(self,weights,tonic,currNote):
-        """make sure next intervals isnt too high or too low from start note
-        For now ill just stop it from getting more than an octave from the tonic
-        
-        @param prob the prob dist
-        @param tonic the originla tonic
-        @param currNote the current note"""
-        #make tonic into actual note type
-        tonicNote = note.Note(tonic,quarterLength=1)
-
-        #find interval from tonic to current note
-        #tonicToCurr = interval.Interval(tonicNote, currNote)
-
-        extremeNote = ""
-        isLower = True
-        if (currNote.pitch < tonicNote.pitch):
-            #currNote is lower than tonic
-            extremeNote = tonicNote.transpose("-P8")
-            isLower = True
-        else:
-            #currNote is higher than tonic
-            extremeNote = tonicNote.transpose("P8")
-            isLower = False
-        
-
-        #find interval from currNote to most extreme note possible (this is what the next interval cant be higher than)
-        currToExt = interval.Interval(currNote,extremeNote)
-        currToExtName = currToExt.name
-        if isLower:
-            currToExtName = "-"+currToExtName
-        #print(tonicNote.pitch,currNote.pitch,extremeNote.pitch, currToExtName)
-
-        #find index of currtoext in everypossibleinterval
-        if currToExtName =="-P1":
-            currToExtName = "P1"
-        extremeIndex = self.every_possible_interval.index(currToExtName)
-
-        UnallowedIntervals = []
-
-        if (isLower):
-            #if currnote is lower than tonic, remove all intervals below
-            #get subset of everypossibleinterval from start to extremeindex exclusive
-            UnallowedIntervals.extend(self.every_possible_interval[:extremeIndex])
-        else:
-            #if currnote is higher than tonic, remove all intervals above
-            #get subset of everypossibleinterval from extremeindex exclusive to end
-            UnallowedIntervals.extend(self.every_possible_interval[extremeIndex+1:])
-
-
-        for i in range(len(self.every_possible_interval)):
-            #is the resulting note from this too far from tonic?
-            weights[i] *= 0 if self.every_possible_interval[i] in UnallowedIntervals else 1
-
-        return weights
 
     def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft,lowestNote,highestNote):
         """returns list of possible notes (music21 notes)
@@ -379,7 +338,7 @@ class CFProducer():
         list of possible notes (music21 notes)
         """
         #check first case
-        if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
+        if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are tonic
             return [tonic]
         
         weights=[1]*len(self.every_possible_interval)
@@ -422,7 +381,7 @@ class CFProducer():
         for i in range(len(weights)):
             if weights[i] != 0:
                 associatedInterval = self.every_possible_interval[i]
-                possibleNotes.append(currentNote.transpose(associatedInterval))
+                possibleNotes.append(currentNote + associatedInterval)
         return possibleNotes
 
     def build_graphviz_tree(self,root):
@@ -431,10 +390,11 @@ class CFProducer():
         def dfs(node):
 
             for child in node.children:
+
                 if child.accept:
-                    dot.node(str(id(child)), child.nodenote.nameWithOctave,color = 'green')
+                    dot.node(str(id(child)), note.Note(child.nodenote).nameWithOctave,color = 'green')
                 else:
-                    dot.node(str(id(child)), child.nodenote.nameWithOctave)
+                    dot.node(str(id(child)), note.Note(child.nodenote).nameWithOctave)
                 dot.edge(str(id(node)), str(id(child)))
                 dfs(child)
 
@@ -451,7 +411,7 @@ class CFProducer():
         randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
         
         @return
-        list of notes (music21 notes)"""
+        list of notes (midi num)"""
 
         #traverse tree starting at root and return list of notes with stack
         currnode = root
@@ -482,11 +442,11 @@ class CFProducer():
         print(f"There are {len(self.leaves)} possible cantus firmuses of length {self.n}")
         with open(filename,"w") as f:
             for leafNode in self.leaves:
-                notes = [leafNode.nodenote.nameWithOctave]
+                notes = [note.Note(leafNode.nodenote).nameWithOctave]
                 currnode = leafNode
                 for _ in range(self.n-1):
                     currnode = currnode.parent
-                    notes.append(currnode.nodenote.nameWithOctave)
+                    notes.append(note.Note(currnode.nodenote).nameWithOctave)
                 
                 writeDict = {
                     "melody": ",".join(reversed(notes)),
@@ -496,20 +456,22 @@ class CFProducer():
                 
 def main():
     #every possible interval within an octave from a note
-    every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
+    every_possible_interval = list(range(-12, 13))  # semitones
     #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
-    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8","P1"],
-                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8","P1"],
-                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8","P1"],
-                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8","P1"],
-                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                      7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6","P1"] 
-                      }
+    MajorIntervalsFull = {
+        1:  [ 2, 4, 5, 7, 9, 12, -1, -3, -5, -7, -8, -12, 0],
+        2:  [ 2, 3, 5, 7, 12, -2, -3, -5, -7, -9, -12, 0],
+        3:  [ 1, 3, 5, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        4:  [ 2, 4, 7, 9, 12, -1, -3, -5, -8, -12, 0],
+        5:  [ 2, 4, 5, 7, 9, 12, -2, -3, -5, -7, -8, -12, 0],
+        6:  [ 2, 3, 5, 7, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        7:  [ 1, 3, 5, 8, 12, -2, -4, -7, -9, 0]
+    }
     
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    cf = CFcomposer.produceCF(8,"C4",verbose=True)
+    #pitch 60 corrseponds to middle c in midi numbering
+    CFcomposer.produceCF(8,60,verbose=True)
 
 
 if __name__ == "__main__":
