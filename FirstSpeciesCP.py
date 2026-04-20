@@ -43,9 +43,7 @@ class FSProducer(CFProducer):
         if verbose:
             print(cf)
             print("\nlength: ",len(cf),"\n")
-        #create streams for cantus firmus and first species
-        cfstream = stream.Part(cf)
-        fsstream = stream.Part()
+
         #start with blank node (because there are multiple possible starting notes (1  3 and 5))
         self.root = TreeNode("N/A",False)
         #get length of cf 
@@ -63,7 +61,12 @@ class FSProducer(CFProducer):
 
         
         if verbose:
-            
+            #create streams for cantus firmus and first species
+            music21cf = []
+            for i in range(1,cflen+1):
+                music21cf.append(note.Note(cf[i]))
+            cfstream = stream.Part(music21cf)
+            fsstream = stream.Part()
             #traverse tree and add get random valid path
             fs = self.traverseTreeDFS(self.root,True)
             #add fs to fsstream
@@ -97,7 +100,7 @@ class FSProducer(CFProducer):
         highestNote
         tieUsed bool"""
         #find possible notes 
-        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1].transpose("P8"),True,nodesLeft,lowestNote,highestNote,tieUsed)
+        possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1] + 12,True,nodesLeft,lowestNote,highestNote,tieUsed)
         #add each note onto tree as node
         for n in possibleNotes:
             #get these climax variables for each possible note
@@ -142,24 +145,23 @@ class FSProducer(CFProducer):
             #if there are two notes left, and nextcfnote is 2nd degree we need 7th for fs
             #and vice versa
             #find if nextCFnote is second degrre or seventh
-            sc = scale.MajorScale(transtonic)
-            scaleDegree = sc.getScaleDegreeFromPitch(nextCFnote)
+            scaleDegree = self.get_scale_degree_major(nextCFnote,transtonic)
             if scaleDegree == 2:
                 #cf cadence is 2nd degree to tonic
-                cadenceBeginnings =[transtonic.transpose("-m2"),transtonic.transpose("M7"),transtonic.transpose("-m9")]
+                cadenceBeginnings =[transtonic - 1,transtonic + 11,transtonic - 12 - 1]
                 for cbnote in cadenceBeginnings:
-                    acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+                    acceptableIntervals.append(cbnote - currentFSnote)
                 for itvl in acceptableIntervals:
-                    if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                        possibleIntervals.append(itvl.semitones+12)
+                    if abs(itvl) <= 12 and abs(itvl) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                        possibleIntervals.append(itvl+12)
             elif scaleDegree == 7:
                 #cf cadence is 7th degree to tonic
-                cadenceBeginnings = [transtonic.transpose("M2"),transtonic.transpose("M9"),transtonic.transpose("-m7")]
+                cadenceBeginnings = [transtonic + 2,transtonic + 12 + 2,transtonic - 10]
                 for cbnote in cadenceBeginnings:
-                    acceptableIntervals.append(interval.Interval(currentFSnote,cbnote))
+                    acceptableIntervals.append(cbnote - currentFSnote)
                 for itvl in acceptableIntervals:
-                    if abs(itvl.semitones) <= 12 and abs(itvl.semitones) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
-                        possibleIntervals.append(itvl.semitones+12)
+                    if abs(itvl) <= 12 and abs(itvl) >= -12: #to prevent leaps greater than 12 semitones (not possible in current framework)
+                        possibleIntervals.append(itvl+12)
             else:
                 print("There is no cadence in cantus firmus")
 
@@ -170,30 +172,30 @@ class FSProducer(CFProducer):
     
     def AvoidParallelPerfectConsonance(self,weights,currentCFnote,nextCFnote, currentFSnote):
 
-        verticalinterval = interval.Interval(currentCFnote,currentFSnote)
+        verticalinterval = currentFSnote - currentCFnote
 
         #if interval between current cf and fs is perfect
-        if((abs(verticalinterval.semitones)%12) in [7,0]):
+        if((abs(verticalinterval)%12) in [7,0]):
             #then find interval from current cf to next cf
-            horintervalcf = interval.Interval(currentCFnote,nextCFnote)
+            horintervalcf = nextCFnote - currentCFnote
 
             #this interval is not allowed
-            return weights @ self.partialIdentityMatrixDelete([horintervalcf.semitones+12])
+            return weights @ self.partialIdentityMatrixDelete([horintervalcf+12])
         else:
 
             return weights
         
     def AvoidSameConsecutivePerfect(self,weights,currentCFnote,nextCFnote,currentFSnote):
 
-        verticalinterval = interval.Interval(currentCFnote,currentFSnote)
-        currentperfect = (abs(verticalinterval.semitones)%12)
+        verticalinterval = currentFSnote - currentCFnote
+        currentperfect = (abs(verticalinterval)%12)
         if(currentperfect in [7,0]):
             #loop through each weight thats not already 0
             for i in range(len(weights)):
                 if weights[i] != 0: #theres no point calculating it on stuff thats already 0
-                    nextFSnote = currentFSnote.transpose(self.every_possible_interval[i])
-                    nextvertinterval = interval.Interval(nextCFnote,nextFSnote)
-                    if (abs(nextvertinterval.semitones)%12) == currentperfect:
+                    nextFSnote = currentFSnote + self.every_possible_interval[i]
+                    nextvertinterval = nextFSnote - nextCFnote
+                    if (abs(nextvertinterval)%12) == currentperfect:
                         weights[i] = 0 #=0, *= 0,  weights @ self.partialIdentityMatrixDelete([i]) all do same thing
         return weights
 
@@ -204,30 +206,34 @@ class FSProducer(CFProducer):
         #for every possible next fs interval, 
         for i in range(len(weights)):
             if weights[i] != 0: #theres no point calculating it on stuff thats already 0
-                #if the fs interval is not by step
+                #if the fs interval is not by step ( just 2 now)
                 if(i not in [8,9,10,11,13,14,15,16]):
                     #and if the vertical interval between that resulting note and next cfnote is perfect,
-                    vertinterval = interval.Interval(nextCFnote, currentFSnote.transpose(self.every_possible_interval[i]))
-                    if ((abs(vertinterval.semitones)%12) in [7,0]):
+                    vertinterval = (currentFSnote + self.every_possible_interval[i]) - nextCFnote
+                    if ((abs(vertinterval)%12) in [7,0]):
                         #and if the interval is similar to cf interval
                         #cf interval polarity
-                        cfinterval = interval.Interval(currentCFnote,nextCFnote).semitones
-                        cfintervalpolarity = cfinterval/abs(cfinterval)
+                        cfinterval = nextCFnote - currentCFnote
+                        cfintervalpolarity = cfinterval/abs(cfinterval) #divide by 0 error cant occur because there is no tie in cf
                         #fs interval polarity
                         fsintervalpolarity = 0
-                        if self.every_possible_interval[i][0] == "-":
+                        if self.every_possible_interval[i] < 0:
                             fsintervalpolarity = -1
+                        elif self.every_possible_interval[i] > 0:
+                            fsintervalpolarity = 1
+                        #if interval is P1, leave it at 0
                         else:
                             fsintervalpolarity = 1
+
                         if (fsintervalpolarity == cfintervalpolarity):
                             #then delete it
-                            weights = weights @ self.partialIdentityMatrixDelete([i]) #i is already in terms of every possible interval (no need to add 12)
+                            weights = weights @ self.partialIdentityMatrixDelete([i]) #i is already in terms of every possible interval (no need to add 12) TODO optomize this line
         return weights
     
     def NoSimultaneousLeaps(self,weights,currentCFnote,nextCFnote):
 
-        cfinterval = interval.Interval(currentCFnote,nextCFnote)
-        if(abs(cfinterval.semitones) > 4):
+        cfinterval = nextCFnote - currentCFnote
+        if(abs(cfinterval) > 4):
             return weights @ self.partialIdentityMatrix([8,9,10,11,12,13,14,15,16])
         return weights
     
@@ -242,12 +248,12 @@ class FSProducer(CFProducer):
         for i in range(len(weights)):
             if weights[i] != 0: #theres no point calculating it on stuff thats already 0
                 associatedInterval = self.every_possible_interval[i]
-                newnote = currentFSnote.transpose(associatedInterval)
+                newnote = currentFSnote + associatedInterval
 
                 # then calculate if the interval between nextcfnote and that note is consonant
-                newInterval = interval.Interval(nextCFnote,newnote)
+                newInterval = newnote - nextCFnote
                 
-                if (abs(newInterval.semitones) % 12) not in [3,4,7,8,9,0]:
+                if (abs(newInterval) % 12) not in [3,4,7,8,9,0]:
                     weights[i] *= 0
         return weights
     
@@ -257,10 +263,10 @@ class FSProducer(CFProducer):
             for i in range(len(weights)):
                 if weights[i] != 0: #theres no point calculating it on stuff thats already 0
                     associatedInterval = self.every_possible_interval[i]
-                    newnote = currentFSnote.transpose(associatedInterval)
+                    newnote = currentFSnote + associatedInterval
 
                     #if the new note is equal to or lower than cf note, then disqualify it
-                    if (newnote.pitch <= nextCFnote.pitch):
+                    if (newnote <= nextCFnote):
                         weights[i] *= 0
         return weights
         
@@ -286,7 +292,7 @@ class FSProducer(CFProducer):
 
         #check first case
         if(currentFSnote == "N/A"): #if no notes have been laid yet, possible notes are transtonic, third, and fifth
-            return [transtonic,transtonic.transpose("M3"),transtonic.transpose("P5")] #this is all up an octave( keeps distance from cf to maximize produced fs while not duplicating melodies by having both transposed triads)
+            return [transtonic,transtonic + 4,transtonic + 7] #this is all up an octave( keeps distance from cf to maximize produced fs while not duplicating melodies by having both transposed triads)
             #return [transtonic,transtonic.transpose("-P8"),transtonic.transpose("-m6"),transtonic.transpose("-P4")] #does tonic triad + octave
 
         weights=[1]*len(self.every_possible_interval)
@@ -347,7 +353,7 @@ class FSProducer(CFProducer):
         for i in range(len(weights)):
             if weights[i] != 0:
                 associatedInterval = self.every_possible_interval[i]
-                possibleNotes.append(currentFSnote.transpose(associatedInterval))
+                possibleNotes.append(currentFSnote + associatedInterval)
 
         return possibleNotes
 
@@ -382,27 +388,26 @@ class FSProducer(CFProducer):
                 raise Exception("There is no possible first species counter point for this cantus firmus")
 
             currnode,level = stack.pop()
-            path[level] = currnode.nodenote #set the index level to the new note, rather than appending
+            path[level] = note.Note(currnode.nodenote) #set the index level to the new note, rather than appending
         
 
         return path
     
     def convertCFtoFilename(self,cf):
-        return "_".join(note.nameWithOctave for note in cf)
+        return "_".join(note.Note(midinote).nameWithOctave for midinote in cf)
 
     def writeData(self,filename):
-        sc = scale.MajorScale(self.tonic)
         #print(f"There are {len(self.leaves)} possible first species counterpoins for given cantus firmus")
         with open(filename,"w") as f:
             for leafNode in self.leaves:
-                notes = [leafNode.nodenote.nameWithOctave]
+                notes = [note.Note(leafNode.nodenote).nameWithOctave]
                 currnode = leafNode
                 for _ in range(self.cflen-1):
                     currnode = currnode.parent
-                    notes.append(currnode.nodenote.nameWithOctave)
+                    notes.append(note.Note(currnode.nodenote).nameWithOctave)
 
                 #find starting note scale degree
-                scaleDegree = sc.getScaleDegreeFromPitch(note.Note(notes[-1]))
+                scaleDegree = self.get_scale_degree_major(note.Note(notes[-1]).pitch.midi,self.tonic)
                 
                 writeDict = {
                     "melody": ",".join(reversed(notes)),
@@ -418,31 +423,24 @@ def main():
     #cf = produceCF(7,7,1,"C4")
 
     #every possible interval within an octave from a note
-    every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
-    #possible intervals from each scale degree in a major scale  + P1 for ties
-    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8","P1"],
-                      2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8","P1"],
-                      3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                      4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8","P1"],
-                      5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8","P1"],
-                      6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                      7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6","P1"] 
-                      }
+    every_possible_interval = list(range(-12, 13))  # semitones
+    #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
+    MajorIntervalsFull = {
+        1:  [ 2, 4, 5, 7, 9, 12, -1, -3, -5, -7, -8, -12, 0],
+        2:  [ 2, 3, 5, 7, 12, -2, -3, -5, -7, -9, -12, 0],
+        3:  [ 1, 3, 5, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        4:  [ 2, 4, 7, 9, 12, -1, -3, -5, -8, -12, 0],
+        5:  [ 2, 4, 5, 7, 9, 12, -2, -3, -5, -7, -8, -12, 0],
+        6:  [ 2, 3, 5, 7, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        7:  [ 1, 3, 5, 8, 12, -2, -4, -7, -9, 0]
+    }
 
     FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
 
+    cf9midi = [60,67,65,67,72,69,74,72]
+    cf10midi = [60,67,65,71,72]
 
-    cf1 = [note.Note("F4"),note.Note("G4"),note.Note("A4"),note.Note("F4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("C5"),note.Note("A4"),note.Note("F4"),note.Note("G4"),note.Note("F4")]
-    cf2 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("F4"),note.Note("D4"),note.Note("C4")]
-    cf3 = [note.Note("C4"),note.Note("E4"),note.Note("B3"),note.Note("C4"),note.Note("G3"),note.Note("D4"),note.Note("C4")]
-    cf4 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("D4"),note.Note("C4")]
-    cf5 = [note.Note("C4"),note.Note("D4"),note.Note("E4"),note.Note("A4"),note.Note("G4"),note.Note("F4"),note.Note("E4"),note.Note("D4"),note.Note("C4")] #cf with possible oblique motion in fs
-    cf6 = [note.Note("C4"),note.Note("C3"),note.Note("D3"),note.Note("A3"),note.Note("G3"),note.Note("E4"),note.Note("D4"),note.Note("C4")] 
-    cf7 = [note.Note("C4"),note.Note("D4"),note.Note("D5"),note.Note("C5")] #impossible oned
-    cf8 = [note.Note("C4"),note.Note("F4"),note.Note("D4"),note.Note("A4"),note.Note("G4"),note.Note("D5"),note.Note("B4"),note.Note("C5")] #impossible one?
-    cf9 = [note.Note("C4"),note.Note("G4"),note.Note("F4"),note.Note("G4"),note.Note("C5"),note.Note("A4"),note.Note("D5"),note.Note("C5")]
-
-    FScomposer.produceFS(cf9,verbose=True)
+    FScomposer.produceFS(cf9midi,verbose=False)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 
