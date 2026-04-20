@@ -8,31 +8,32 @@ from wakepy import keep
 
 LENGTH = 8
 
-def melodyToNotes(melody):
+def melodyToMidi(melody):
     melodyNotes = melody.split(",")
-    returnNotes = []
+    returnMidi = []
     for notename in melodyNotes:
-        returnNotes.append(note.Note(notename))
-    return returnNotes
+        returnMidi.append(note.Note(notename).pitch.midi)
+    return returnMidi
 
 print(f"Collecting data for all cantus firmus of length {LENGTH}")
 
 with keep.running():
     #every possible interval within an octave from a note
-    every_possible_interval = ["-P8", "-M7","-m7","-M6","-m6","-P5","-D5","-P4","-M3","-m3","-M2","-m2","P1","m2","M2","m3","M3","P4","D5","P5","m6","M6","m7","M7","P8"]#12 is middle
+    every_possible_interval = list(range(-12, 13))  # semitones
     #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
-    MajorIntervalsFull = {1:["M2","M3","P4","P5","M6","P8","-m2","-m3","-P4","-P5","-m6","-P8","P1"],
-                        2:["M2","m3","P4","P5","P8","-M2","-m3","-P4","-P5","-M6","-P8","P1"],
-                        3:["m2","m3","P4","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                        4:["M2","M3","P5","M6","P8","-m2","-m3","-P4","-m6","-P8","P1"],
-                        5:["M2","M3","P4","P5","M6","P8","-M2","-m3","-P4","-P5","-m6","-P8","P1"],
-                        6:["M2","m3","P4","P5","m6","P8","-M2","-M3","-P4","-P5","-M6","-P8","P1"],
-                        7:["m2","m3","P4","m6","P8","-M2","-M3","-P5","-M6","P1"] 
-                        }
+    MajorIntervalsFull = {
+        1:  [ 2, 4, 5, 7, 9, 12, -1, -3, -5, -7, -8, -12, 0],
+        2:  [ 2, 3, 5, 7, 12, -2, -3, -5, -7, -9, -12, 0],
+        3:  [ 1, 3, 5, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        4:  [ 2, 4, 7, 9, 12, -1, -3, -5, -8, -12, 0],
+        5:  [ 2, 4, 5, 7, 9, 12, -2, -3, -5, -7, -8, -12, 0],
+        6:  [ 2, 3, 5, 7, 8, 12, -2, -4, -5, -7, -9, -12, 0],
+        7:  [ 1, 3, 5, 8, 12, -2, -4, -7, -9, 0]
+    }
     #cantus firmus
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
-    CFcomposer.produceCF(LENGTH,"C4",verbose=False)
+    CFcomposer.produceCF(LENGTH,60,verbose=False)
 
     #first species
     FScomposer = FSProducer(every_possible_interval,MajorIntervalsFull)
@@ -41,7 +42,7 @@ with keep.running():
             cfdict = json.loads(line.strip())
 
             #convert cf dict melody to list of music21 notes
-            cf = melodyToNotes(cfdict["melody"])
+            cf = melodyToMidi(cfdict["melody"])
             #print(cf)
             FScomposer.reset()
             FScomposer.produceFS(cf,verbose=False)
