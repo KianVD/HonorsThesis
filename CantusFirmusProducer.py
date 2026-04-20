@@ -290,7 +290,8 @@ class CFProducer():
         if abs(currToHighItvl.semitones) <= 12 and abs(currToHighItvl.semitones) >= -12:
             epi_index = currToHighItvl.semitones+12
             #add anything above that interval to unallowed intervals
-            unallowedIntervals.extend(self.every_possible_interval[:epi_index+1])#stop exclusive
+            
+            unallowedIntervals.extend(range(epi_index+1,25))#stop exclusive
         #now same for  lowest allowed note
         lowestValidNote = highestNote.transpose("-M10")
 
@@ -298,8 +299,8 @@ class CFProducer():
 
         if abs(currToLowItvl.semitones) <= 12 and abs(currToLowItvl.semitones) >= -12:
             epi_index = currToLowItvl.semitones+12
-            #add anything above that interval to unallowed intervals
-            unallowedIntervals.extend(self.every_possible_interval[epi_index:]) #start inclusive
+            #add anything below that interval to unallowed intervals
+            unallowedIntervals.extend(range(epi_index)) #start inclusive
 
         return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
 
