@@ -202,7 +202,7 @@ class FSProducer(CFProducer):
 
 
     def AvoidDirectPerfectIntervals(self,weights,currentCFnote,nextCFnote, currentFSnote):
-
+        unallowedIntervals = []
         #for every possible next fs interval, 
         for i in range(len(weights)):
             if weights[i] != 0: #theres no point calculating it on stuff thats already 0
@@ -227,8 +227,8 @@ class FSProducer(CFProducer):
 
                         if (fsintervalpolarity == cfintervalpolarity):
                             #then delete it
-                            weights = weights @ self.partialIdentityMatrixDelete([i]) #i is already in terms of every possible interval (no need to add 12) TODO optomize this line
-        return weights
+                            unallowedIntervals.append(i) #i is already in terms of every possible interval (no need to add 12)
+        return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
     
     def NoSimultaneousLeaps(self,weights,currentCFnote,nextCFnote):
 
@@ -439,8 +439,9 @@ def main():
 
     cf9midi = [60,67,65,67,72,69,74,72]
     cf10midi = [60,67,65,71,72]
+    cf11midi = [60,62,64,65,67,64,62,60]
 
-    FScomposer.produceFS(cf9midi,verbose=False)
+    FScomposer.produceFS(cf11midi,verbose=False)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 
