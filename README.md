@@ -1,4 +1,4 @@
-#Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition."
+# Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition."
 
 My paper can be found online here: <link>
 
