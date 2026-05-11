@@ -444,8 +444,10 @@ def main():
     cf11midi = [60,62,64,65,67,64,62,60]
     cf12midi = [60,57,69,67,59,60,62,60]
     cf13midi = [60,67,65,62,60]
+    cf14midi = [60,62,59,60]
+    cf15midi = [60,65,69,67,55,57,62,60]
 
-    FScomposer.produceFS(cf12midi,verbose=False)
+    FScomposer.produceFS(cf15midi,verbose=True)
     #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
 
 

@@ -18,7 +18,13 @@ class CFProducer():
 
     def produceCF(self,n,tonic,filename="generated_melodies",verbose=False):
         """create and show cantus firmus
-        return list of notes"""
+
+        Arguments:
+        n -- length of melodies to generate
+        tonic -- midi number
+        filename -- the filename to write data to
+        verbose -- whether to display tree and a random melody
+        """
 
         if verbose:
             print(f"generating all cantus firmus of length {n}")
@@ -68,12 +74,13 @@ class CFProducer():
         3 is perfect fourth then a third up
         -3 is perfect fourth then a third down
 
-        @param 
-        parent: current note node
-        nextNote: the next note of melody, midi pitch
-        currDirJumped: the dirJumped var for the note before current note to current note
+        Arguments:
+        parent -- current note node
+        nextNote -- the next note of melody, midi pitch
+        currDirJumped -- the dirJumped var for the note before current note, to current note
         
-        returns: nextDirJumped
+        Returns:
+        nextDirJumped value
         """
         nextDirJumped = 0
         sm = 0
@@ -474,7 +481,7 @@ def main():
     CFcomposer = CFProducer(every_possible_interval,MajorIntervalsFull)
 
     #pitch 60 corrseponds to middle c in midi numbering
-    CFcomposer.produceCF(8,60,verbose=True)
+    CFcomposer.produceCF(5,60,verbose=True)
 
 
 if __name__ == "__main__":

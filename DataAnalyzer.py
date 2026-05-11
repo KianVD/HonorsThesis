@@ -158,9 +158,9 @@ class DataAnalyzer():
 def main():
 
     #needs the file from generating all cf and the folder for generating all fs on the cfs
-    cf_melodies = "generated_melodies10.txt" #every melody in this file must have a corresponding file in results folder for all the fs on that melody
-    results_folder = "results10"
-    out = "analysisResults10.csv"
+    cf_melodies = "generated_melodies13S.txt" #every melody in this file must have a corresponding file in results folder for all the fs on that melody
+    results_folder = "results13"
+    out = "analysisResults13.csv"
     
     da = DataAnalyzer()
     da.analyze(cf_melodies,results_folder,out,True)#True for population, False for sample

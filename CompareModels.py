@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 x = np.array([8, 9, 10, 11, 12, 13,14])#length
 y = np.array([206, 207, 546, 1247, 2995, 7671,12257])#time
 
-#x = np.array([8, 9, 10, 11, 12, 13,14,15])#length
-#y = np.array([1854,8311,36123,157974,679930,2912744,12364068,52207488])#cfnum
+x = np.array([8, 9, 10, 11, 12, 13,14,15,16])#length
+y = np.array([1854,8311,36123,157974,679930,2912744,12364068,52207488,219142399])#cfnum
 
-#x = np.array([8, 9, 10, 11, 12, 13])#length
-#y = np.array([182.32362459546925,398.888,948.331,2003.137,4538.432,10018.938])#avgfs
+x = np.array([8, 9, 10, 11, 12, 13,14,15,16])#length
+y = np.array([182.32362459546925,398.888,923.052,2003.137,4538.432,10018.938,22480.863,47616.252,104986.647])#avgfs
 x = x.reshape(-1,1)
 
 class ModelComparison():
@@ -84,6 +84,8 @@ class ModelComparison():
         print(f"prediction for {x1} {pred}" )
 
         
+        plt.scatter(x, y)
+        plt.show()
         plt.scatter(x, y)
         x1p = sm.add_constant(x,has_constant="add")
         pred = np.exp(self.aic_dict["exp"][1].predict(x1p))
