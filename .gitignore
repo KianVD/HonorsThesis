@@ -5,3 +5,6 @@ test4.py
 results*/
 generated_melodies*
 tree
+.vscode
+findrange.py
+preparedData*
