@@ -35,8 +35,8 @@ class FSProducer(CFProducer):
         
         Arguments:
         cf -- a list of midi numbers corresponding to the cantus firmus
-        verbose -- boolean, whether to display tree and random melody"""
-        
+        verbose -- boolean, whether to display tree and random melody
+        """
 
         if verbose:
             print(cf)
@@ -87,16 +87,17 @@ class FSProducer(CFProducer):
         final, correct paths will have a value of True as their accepting parameter, indicating the path to get 
         to that node was a valid counterpoint
         
-        @params
-        parent parent of currnode
-        nodesLeft how many nodes until first species is finished
-        cf original cantus firmus
-        dirJumped
-        currClimax music21 note
-        climaxCount
-        lowestNote
-        highestNote
-        tieUsed bool"""
+        Arguments:
+        parent -- parent node of currnode
+        nodesLeft -- how many nodes until first species is finished
+        cf -- original cantus firmus (list of midi numbers)
+        dirJumped -- current dirJumped value
+        currClimax -- midi number
+        climaxCount -- int
+        lowestNote -- midi number
+        highestNote -- midi number
+        tieUsed -- bool
+        """
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,cf[-(nodesLeft+1)],cf[-nodesLeft],dirJumped,cf[1] + 12,True,nodesLeft,lowestNote,highestNote,tieUsed)
         #add each note onto tree as node
@@ -135,7 +136,18 @@ class FSProducer(CFProducer):
                 self.generateFSTree(newNode,nodesLeft-1,cf,nextDirJumped,nClimax,nClimaxCount,newLowestNote,newHighestNote,tieUsed)
         
     def EnsureOppositeCadence(self,weights,currentFSnote, transtonic,nodesLeft,nextCFnote):
-        """ensures that the first species counterpoint has the opposite cadence from the cantus firmus"""
+        """ensures that the first species counterpoint has the opposite cadence from the cantus firmus
+        
+        Arguments:
+        weights -- list of ints, correspond to epi
+        currentFSnote -- midi number
+        transtonic -- midi number, the tonic of the cf transposed up an octave
+        nodesLeft -- int, min 1
+        nextCFnote -- midi number
+
+        Returns:
+        updated weights
+        """
         if nodesLeft == 2:
             acceptableIntervals = []
             cadenceBeginnings = []
@@ -169,6 +181,18 @@ class FSProducer(CFProducer):
         return weights
     
     def AvoidParallelPerfectConsonance(self,weights,currentCFnote,nextCFnote, currentFSnote):
+        """
+        avoids parallel perfect consonance between the voices
+
+        Arguments:
+        weights -- list of ints corresponding to epi
+        currentCFnote -- midi number
+        nextCFnote -- midi number
+        currentFSnote -- midi number
+
+        Returns:
+        updated weights
+        """
 
         verticalinterval = currentFSnote - currentCFnote
 
@@ -184,6 +208,18 @@ class FSProducer(CFProducer):
             return weights
         
     def AvoidSameConsecutivePerfect(self,weights,currentCFnote,nextCFnote,currentFSnote):
+        """
+        avoids having the same vertical perfect interval consecutively next to each other, also avoids contrary fifths and octaves
+
+        Arguments:
+        weights -- list of ints correspond to epi
+        currentCFnote -- midi number
+        nextCFnote -- midi number
+        currentFSnote -- midi number
+
+        Returns:
+        updated weights
+        """
 
         verticalinterval = currentFSnote - currentCFnote
         currentperfect = (abs(verticalinterval)%12)
@@ -200,6 +236,17 @@ class FSProducer(CFProducer):
 
 
     def AvoidDirectPerfectIntervals(self,weights,currentCFnote,nextCFnote, currentFSnote):
+        """avoids direct perfect intervals
+        
+        Arguments:
+        weights -- list of ints correspond to epi
+        currentCFnote -- midi number
+        nextCFnote -- midi number
+        currentFSnote -- midi number
+        
+        Returns:
+        updated weights
+        """
         unallowedIntervals = []
         #for every possible next fs interval, 
         for i in range(len(weights)):
@@ -229,6 +276,16 @@ class FSProducer(CFProducer):
         return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
     
     def NoSimultaneousLeaps(self,weights,currentCFnote,nextCFnote):
+        """avoids simultaneous leaps between the voices
+        
+        Arguments:
+        weights -- list of ints correspond to epi
+        currentCFnote -- midi number
+        nextCFnote -- midi number
+        
+        Returns:
+        updated weights
+        """
 
         cfinterval = nextCFnote - currentCFnote
         if(abs(cfinterval) > 4):
@@ -238,7 +295,13 @@ class FSProducer(CFProducer):
     def LimitToConsonantVertical(self,weights,currentFSnote,nextCFnote):
         """limits to consonant vertical intervals between cf and fs
         
-        @param weights
+        Arguments:
+        weights -- list of ints correspond to epi
+        currentFSnote -- midi number
+        nextCFnote -- midi number
+
+        Returns:
+        updated weights
         """
         #for each interval, calculate the note you would end up at from current fs note
 
@@ -256,7 +319,17 @@ class FSProducer(CFProducer):
         return weights
     
     def NoOverlap(self,weights,nextCFnote,currentFSnote,nodesLeft):
-        """ensures no overlap between cantus firmus and fs"""
+        """ensures no overlap between cantus firmus and fs
+        
+        Arguments:
+        weights -- list of ints correspond to epi
+        nextCFnote -- midi number
+        currentFSnote -- midi number
+        nodesLeft -- int, min 1
+
+        Returns:
+        updated weights
+        """
         if not nodesLeft == 1:#allows last note to overlap
             for i in range(len(weights)):
                 if weights[i] != 0: #theres no point calculating it on stuff thats already 0
@@ -272,20 +345,20 @@ class FSProducer(CFProducer):
     def getPossibleNotes(self,currentFSnote,currentCFnote,nextCFnote,dirJumped,transtonic,major,nodesLeft,lowestNote,highestNote,tieUsed):
         """returns all possible notes by eliminating intervals from currentFSnote
         
-        @params
-        currentFSnote string representation of current fsnote (or "N/A")
-        currentCFnote music 21 note (or "N/A")
-        nextCFnote music 21 note (or "N/A")
-        dirJumped indicates direction jumped last interval in fs (>0 means up, <0 means down, 0 means step)
-        transtonic the transtonic of the scale, as music21 note, trasposed up an octave
-        major whether the cantus firmus in the major scale or not (bool)
-        nodesLeft how many nodes/notes are left in the song
-        lowestNote: lowest music21 note in melody so far
-        highestNote: highest music21 note in melody so far
-        tieUsed: whether a tie has been used in the melody yet
+        Arguments:
+        currentFSnote -- midi number (or "N/A")
+        currentCFnote -- midi number (or "N/A")
+        nextCFnote -- midi number (or "N/A")
+        dirJumped -- int indicates direction jumped last interval in fs
+        transtonic -- the tonic of the scale, as midi number, trasposed up an octave
+        major -- whether the cantus firmus in the major scale or not (bool)
+        nodesLeft -- how many nodes/notes are left in the song, int
+        lowestNote -- lowest midi number note in melody so far
+        highestNote -- highest midi number note in melody so far
+        tieUsed -- whether a tie has been used in the melody yet (bool)
         
-        @return 
-        list of possible notes (music 21 notes)
+        Returns:
+        list of possible notes (midi numbers)
         """
 
         #check first case
@@ -359,12 +432,12 @@ class FSProducer(CFProducer):
         """
         traverses the built tree and choose a depth first path off the tree to return as list of notes
 
-        @params
-        root node to traverse from
-        randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
+        Arguments:
+        root -- TreeNode to traverse from
+        randomPush -- (bool) if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
         
-        @return
-        list of notes (music21 notes)"""
+        Returns:
+        list of notes (midi numbers)"""
 
         #traverse tree starting at root and return list of notes with stack
         currnode = root
@@ -392,9 +465,11 @@ class FSProducer(CFProducer):
         return path
     
     def convertCFtoFilename(self,cf):
+        """converts list of midi numbers to a filename"""
         return "_".join(note.Note(midinote).nameWithOctave for midinote in cf)
 
     def writeData(self,filename):
+        """writes every fs for given cf to json output file with given filename"""
         #print(f"There are {len(self.leaves)} possible first species counterpoins for given cantus firmus")
         lines = []
         for leafNode in self.leaves:
@@ -419,7 +494,6 @@ class FSProducer(CFProducer):
 
 
 def main():
-
     #every possible interval within an octave from a note
     every_possible_interval = list(range(-12, 13))  # semitones
     #possible intervals from each scale degree in a major scale (leaving out tritones and 7th intervals)
@@ -444,8 +518,6 @@ def main():
     cf15midi = [60,65,69,67,55,57,62,60]
 
     FScomposer.produceFS(cf15midi,verbose=True)
-    #print(FScomposer.getPossibleNotes(note.Note("B4"),note.Note("G4"),note.Note("F4"),0,note.Note("C4"),True,4,note.Note("B4"),note.Note("F5"),False)) #in these specific rules, we make 7th scale degree always resolve to tonic
-
 
 if __name__ == "__main__":
     main()

@@ -14,7 +14,7 @@ Experiment workflow:
 2) if either gets cutoff, run ExperimentRunner3 to continue getting fs on previous generated_melodies.txt
 3) once all data is acquired, rename results and generated_melodies to save them
 
-HonorsThesis.ipynb was employed on google colab with mounted google drive for storage to increase speed and RAM memory for data collection. Data collection for length 16 got up to 80 GB RAM (further optimizations can be made). cflengthResults.csv contains estimates in the third column for the number of seconds each round of data collection took.
+HonorsThesis.ipynb was employed on google colab with mounted google drive for storage to increase speed and RAM memory for data collection. Data collection for length 16 got up to 80 GB RAM (This version is optimized to not store children in nodes, but further optimizations can be made). cflengthResults.csv contains estimates in the third column for the number of seconds each round of data collection took.
 
 python file "DataAnalyzer.py" was used to read collected data and compile a csv with all relevant information for further data analysis
 
