@@ -2,7 +2,7 @@
 this just add up everything already in results and skip to that line in generated melodies,
  so you can start where you left off if you ran 1 but closed it"""
 
-from FirstSpeciesCP import FSProducer
+from FirstSpeciesProducer import FSProducer
 import json
 from music21 import *
 from pathlib import Path

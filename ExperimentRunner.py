@@ -1,7 +1,7 @@
 """run this program to generate all first species counterpoints on all cantus firmuses of 
 specified length, just change the length"""
 from CantusFirmusProducer import CFProducer
-from FirstSpeciesCP import FSProducer
+from FirstSpeciesProducer import FSProducer
 import json
 from music21 import *
 from wakepy import keep

@@ -1,7 +1,7 @@
 """run this program to generate all first species counterpoints on a random sample of 
 specified size of cantus firmuses of specified length"""
 from CantusFirmusProducer import CFProducer
-from FirstSpeciesCP import FSProducer
+from FirstSpeciesProducer import FSProducer
 import json
 from music21 import *
 import random
