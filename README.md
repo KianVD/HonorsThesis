@@ -1,4 +1,4 @@
-### Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition."
+### Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition." 🦬
 
 My paper can be found online here: [Investigation Creative Possibility using Automated Composition](www.google.com)
 
@@ -31,4 +31,4 @@ python file "CompareModels.py" was used to compare AIC scores for different mode
 - Music21 notation: https://www.music21.org/music21docs/ 
 - Computer models of musical creativity, David Cope
 
-[^] Copyright Kian Drees, B.S. 
+Copyright Kian Drees, B.S. 
