@@ -1,0 +1,7 @@
+graphviz==0.21
+matplotlib==3.9.4
+music21==9.7.1
+numpy==2.2.6
+scikit-learn==1.6.1
+statsmodels==0.14.4
+wakepy==1.0.0

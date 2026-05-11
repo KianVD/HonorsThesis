@@ -1,14 +1,10 @@
 """Class to produce all possible first species counterpoints on a given cantus firmus
 Inherits from CFProducer"""
 from music21 import *
-import numpy as np
-from graphviz import Digraph
 from TreeNode import TreeNode
 from CantusFirmusProducer import CFProducer 
 import random
 import json
-import os
-from pathlib import Path
 
 #use classes to build a tree with all the possibilities, then follow random to choose one fscp
 
@@ -37,8 +33,10 @@ class FSProducer(CFProducer):
 
         for now assume quarterLength is always 1 when creating notes (default)
         
-        @params
-        list cf a list of music21 notes corresponding to the cantus firmus"""
+        Arguments:
+        cf -- a list of midi numbers corresponding to the cantus firmus
+        verbose -- boolean, whether to display tree and random melody"""
+        
 
         if verbose:
             print(cf)
