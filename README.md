@@ -1,6 +1,6 @@
-# Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition."
+### Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition."
 
-My paper can be found online here: <link>
+My paper can be found online here: [Investigation Creative Possibility using Automated Composition](www.google.com)
 
 Run python file "CantusFirmusProducer.py" to generate a tree of all possible cantus firmi and potentially show the tree and show a random melody. Modify the call to produceCF at the very bottom to change the length of the desired melodies, the starting note (midi number) and whether to show the tree and a random melody.
 
@@ -8,7 +8,7 @@ Run python file "FirstSpeciesProducer.py" to generate tree of all possible first
 
 Run one of the ExperimentRunner python files to collect data for every possible first species counterpoint on every possible cantus firmus for a given length, or a sample of that space. These files generate a file named generated_melodies.txt with every cantus firmus for a length, then in a results folder writes a json output file for each cantus firmus
 
-Experiment workflow:
+**Experiment workflow:**
 1) create results folder
 2) run ExperimentRunner to generate all cf or ExperimentRunner4 to selected 1000 random cf
 3) if either gets cutoff, run ExperimentRunner3 to continue getting fs on previous generated_melodies.txt
@@ -20,15 +20,15 @@ python file "DataAnalyzer.py" was used to read collected data and compile a csv 
 
 python file "CompareModels.py" was used to compare AIC scores for different models to fit several datasets and graph best fit lines on the data.
 
-Notes:
+**Notes:**
 - midi number in the code refers to ints that are representing notes in MIDI format
 
 - musescore files created are stored in default temp folder on your computer
 
 - counterpoint rules abridged by Dr. Christopher Adler of the University of San Diego
 
-References:
+**References:**
 - Music21 notation: https://www.music21.org/music21docs/ 
 - Computer models of musical creativity, David Cope
 
-Copyright Kian Drees, B.S. 
+[^] Copyright Kian Drees, B.S. 
