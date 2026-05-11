@@ -24,7 +24,7 @@ class FSProducer(CFProducer):
         self.tonic = None #music21 note
 
     def reset(self):
-        """resets all variables to avoid leakage across different runs with same fsproducer instance"""
+        """resets all instance variables to avoid leakage across different runs with same fsproducer instance"""
         self.cflen = 0
         self.root = None
         self.tree = None
@@ -421,8 +421,6 @@ class FSProducer(CFProducer):
 
 
 def main():
-    # we will be given a list of notes representing the cantus firmus
-    #cf = produceCF(7,7,1,"C4")
 
     #every possible interval within an octave from a note
     every_possible_interval = list(range(-12, 13))  # semitones
