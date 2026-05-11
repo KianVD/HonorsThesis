@@ -4,6 +4,4 @@ __pycache__
 test4.py
 results*/
 generated_melodies*
-*.csv
-*.xlsx
 tree
