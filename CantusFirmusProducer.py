@@ -52,7 +52,7 @@ class CFProducer():
         self.writeData(f"{filename}.txt")
     
     def getNewClimax(self,newNote,currClimax,climaxCount):
-        #check if climax is duplicated for each note
+        """check if climax is duplicated for each note"""
         if newNote > currClimax:
             currClimax = newNote
             climaxCount = 1
@@ -109,7 +109,15 @@ class CFProducer():
         return nextDirJumped
 
     def computeNewExtremes(self,lowestNote,highestNote,newNote):
-        """compute extremes and give them back to generate tree to remember"""
+        """compute extremes and give them back to generate tree to remember
+        
+        Arguments:
+        lowestNote -- the lowest note found in the melody yet (midi number)
+        highestNote -- highest note in melody (midi number)
+        newNote -- a next possible note (midi number)
+        
+        Returns:
+        (updated lowestNote (midi number), updated highestNote (midi number))"""
         if lowestNote == "N/A" or highestNote == "N/A":
             lowestNote = newNote
             highestNote = newNote
@@ -124,14 +132,15 @@ class CFProducer():
     def generateTree(self,parent,nodesLeft,dirJumped,tonic,currClimax,climaxCount,lowestNote,highestNote):
         """recursively generates tree of cantus firmuses
          
-        @param parent node  
-        nodesLeft
-        dirJumped
-        tonic midi pitch num
-        currClimax midi pitch num
-        climaxCount
-        lowestNote
-        highestNote"""
+        Arguments:
+        parent -- parent node (TreeNode object)
+        nodesLeft -- number of nodes left in melody, minimum 1
+        dirJumped -- int, see getNextDirJumped docstring for key
+        tonic -- midi pitch num
+        currClimax -- highest note in melody, midi pitch num
+        climaxCount -- number of times the climax is in the melody
+        lowestNote -- lowest note in melody, midi number
+        highestNote -- highest note in melody, midi number (same as currClimax, oops)"""
         #find possible notes 
         possibleNotes = self.getPossibleNotes(parent.nodenote,dirJumped,tonic,True,nodesLeft,lowestNote,highestNote)
         #add each note onto tree as node
@@ -163,14 +172,18 @@ class CFProducer():
                     newNode.leapCount = parent.leapCount
                 #get the extremes for range calc
                 newLowestNote,newHighestNote = self.computeNewExtremes(lowestNote,highestNote,n)
-                
+                print(nClimax,newHighestNote)
                 self.generateTree(newNode,nodesLeft-1,nextDirJumped,tonic,nClimax,nClimaxCount,newLowestNote,newHighestNote)
 
     def partialIdentityMatrix(self,preserved_indeces):
         """creates an identity matrix of size of every possible interval,
         with only the specified diagonals remaining
         
-        @param preserved_indices indices to keep"""
+        Arguments:
+        preserved_indices -- indices to keep
+        
+        Returns:
+        np matrix"""
         matrixWidth = len(self.every_possible_interval)
         newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
         for i in preserved_indeces:
@@ -180,7 +193,11 @@ class CFProducer():
         """creates an identity matrix of size of every possible interval,
         with only the specified diagonals as 0
         
-        @param preserved_indices indices to delete"""
+        Arguments:
+        preserved_indices -- indices to delete
+        
+        Returns:
+        np matrix"""
         matrixWidth = len(self.every_possible_interval)
         newMatrix = np.zeros((matrixWidth,matrixWidth),dtype =int)
         for i in range(len(self.every_possible_interval)):
@@ -189,13 +206,17 @@ class CFProducer():
         return newMatrix
     
     def EnsureCadence(self,weights,currentNote,tonic,nodesLeft,transposeOk):
-        """ensures the  cadence happens
+        """ensures the cadence happens
         
-        @param weights
-        currentNote
-        tonic
-        nodesLeft
-        transposeOk: bool, whether landing on the tonic transposed up or down an octave is ok
+        Arguments:
+        weights -- list of weights (ints) corresponding to intervals in self.every_possible_interval
+        currentNote -- midi number
+        tonic -- midi number
+        nodesLeft -- int nodes left
+        transposeOk --  bool, whether landing on the tonic transposed up or down an octave is ok
+
+        Returns:
+        new adjusted weights list
         """
         possibleIntervals = []
         acceptableIntervals = []
@@ -239,10 +260,14 @@ class CFProducer():
         
     def get_scale_degree_major(self,pitch, tonic):
         """
-        pitch: int (MIDI number)
-        tonic: int (MIDI number)
+        gets scale degree of pitch in major key of tonic
 
-        returns: 1-7 if in major scale, else None
+        Arguments:
+        pitch -- int (MIDI number)
+        tonic -- int (MIDI number)
+
+        Returns:
+        1-7 if in major scale, else None
         """
         semitone = (pitch - tonic) % 12
 
@@ -261,11 +286,13 @@ class CFProducer():
     def LimitToMajorScale(self,weights,tonic,currNote):
         """sets all intervals to 0 except for those in the given scale, depending on scaledegree
         
-        @param prob the probability distribution we are working with 
-        @param tonic tonic we are using music21note
-        @param currNote the current note were on music21 note
+        Arguments:
+        weights -- list of weights ints corresponding to epi 
+        tonic -- tonic we are using midi number
+        currNote -- the current note were on midi number
         
-        @return list of floats between 0 and 1, len 25"""
+        Returns:
+        list of weights"""
         #first figure out scale degree
         scaleDegree = self.get_scale_degree_major(currNote,tonic)
 
@@ -280,11 +307,13 @@ class CFProducer():
     def ResolveLeadingTone(self,weights,tonic,currNote):
         """if the current note is the leading tone, select only m2 as a possible interval
         
-        @param weights the probability distribution we are working with 
-        @param tonic tonic we are using music21 note
-        @param currNote the current note were on music21 note
+        Arguments:
+        weights -- list of weights ints corresponding to epi  
+        tonic -- tonic we are using midi number
+        currNote -- the current note were on midi number
         
-        @return weights"""
+        Returns:
+        list of weights"""
         scaleDegree = self.get_scale_degree_major(currNote,tonic)
 
         if (scaleDegree == 7):
@@ -297,13 +326,15 @@ class CFProducer():
         """a new limit to range function that limits the entire interval of used notes to 1 and a 3rd, 
         updating the possible region based on 1.3 above lowest and 1.3 below highest
         
-        @param weights weights
-        @param tonic tonic (text)
-        @param currNote current note (music21 note)
-        @param lowestNote lowestNote in cf so far (music21 note )
-        @param highestNote highestNote in cf so far (music21 note)
+        Arguments:
+        weights -- int weights
+        tonic -- tonic midi number
+        currNote -- current note midi number
+        lowestNote lowestNote in cf so far midi number
+        highestNote highestNote in cf so far midi number
         
-        @return new weights"""
+        Returns:
+        new weights"""
 
         #compute the bounds and update weights as such---
         unallowedIntervals = []
@@ -329,20 +360,20 @@ class CFProducer():
         return weights @ self.partialIdentityMatrixDelete(unallowedIntervals)
 
     def getPossibleNotes(self,currentNote,dirJumped,tonic,major,nodesLeft,lowestNote,highestNote):
-        """returns list of possible notes (music21 notes)
+        """returns list of possible notes midi numbers
         
-        params:
-        currentNote: current music21 note of cantus firmus
-        dirJumped: the direction of a leap made to get to current note (0 is no jump, 1 is jump up, -1 is jump down) 
+        Arguments:
+        currentNote -- current note of cantus firmus (midi number)
+        dirJumped -- the direction of a leap made to get to current note (0 is no jump, 1 is jump up, -1 is jump down) 
             extended - (2 is perfect fourth up, -2 is perfect fourth down, 3 is perfect fourth then a third up, -3 is perfect fourth then a third down)
-        tonic: music21 note of tonic
-        major: boolean whether the cf is major or not
-        nodesLeft: number of remaining notes in cf (1 is the lowest you can expect)
-        lowestNote: lowest music21 note in melody so far
-        highestNote: highest music21 note in melody so far
+        tonic -- midi num note of tonic
+        major -- boolean whether the cf is major or not
+        nodesLeft -- number of remaining notes in cf (1 is the lowest you can expect)
+        lowestNote -- lowest music21 note in melody so far midi number
+        highestNote -- highest music21 note in melody so far midi number
         
-        returns:
-        list of possible notes (music21 notes)
+        Returns:
+        list of possible notes (midi numbers)
         """
         #check first case
         if(currentNote == "N/A"): #if no notes have been laid yet, possible notes are tonic
@@ -392,6 +423,7 @@ class CFProducer():
         return possibleNotes
 
     def build_graphviz_tree(self,root):
+        """builds graphviz tree to display generated tree """
         dot = Digraph()
 
         def dfs(node):
@@ -413,11 +445,11 @@ class CFProducer():
         """
         traverses the built tree and choose a depth first path off the tree to return as list of notes
 
-        @params
-        root node to traverse from
-        randomPush if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
+        Arguments:
+        root -- TreeNode to traverse from
+        randomPush -- if true, adds new nodes to the stack in a random order, to choose a path at random on the tree, otherwise, chooses first node everytime
         
-        @return
+        Return:
         list of notes (midi num)"""
 
         #traverse tree starting at root and return list of notes with stack
@@ -446,6 +478,7 @@ class CFProducer():
         return path
     
     def writeData(self,filename):
+        """writes collected data from melodies to file"""
         print(f"There are {len(self.leaves)} possible cantus firmuses of length {self.n}")
         lines = []
         
