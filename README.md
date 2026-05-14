@@ -1,6 +1,6 @@
 ### Welcome to my Honors Thesis Repository for, "Investigating Creative Possibility using Automated Composition." 🦬
 
-My paper can be found online here: [Investigation Creative Possibility using Automated Composition](www.google.com)
+My paper can be found online here: [Investigation Creative Possibility using Automated Composition](https://digital.sandiego.edu/honors_theses/153/)
 
 Run python file "CantusFirmusProducer.py" to generate a tree of all possible cantus firmi and potentially show the tree and show a random melody. Modify the call to produceCF at the very bottom to change the length of the desired melodies, the starting note (midi number) and whether to show the tree and a random melody.
 
